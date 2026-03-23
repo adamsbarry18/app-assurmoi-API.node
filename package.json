@@ -1,0 +1,23 @@
+{
+  "name": "assurmoi",
+  "version": "1.0.0",
+  "description": "App Assurmoi API",
+  "license": "ISC",
+  "author": "Mamadou Barry <mabarry2018@gmail.com>",
+  "type": "commonjs",
+  "main": "app.js",
+  "scripts": {
+    "dev": "nodemon app.js"
+  },
+  "dependencies": {
+    "express": "^5.2.1"
+  },
+    "homepage": "https://github.com/adamsbarry18/app-assurmoi-API.node#readme",
+  "bugs": {
+    "url": "https://github.com/adamsbarry18/app-assurmoi-API.node/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/adamsbarry18/app-assurmoi-API.node.git"
+  }
+}

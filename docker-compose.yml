@@ -1,0 +1,48 @@
+version: '3.1'
+
+services:
+  # NodeJS Service
+  app-assurmoi-node:
+    container_name: "app-assurmoi-API-nodejs"
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    command: 'npm run dev'
+    depends_on:
+       - 'app-assurmoi-db'
+       - 'app-assurmoi-mailhog'
+    links:
+       - 'app-assurmoi-db:db'
+       - 'app-assurmoi-mailhog:mailhog'
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - './:/home/app:rw'
+    ports:
+      - "3000:3000"
+    networks:
+      - default
+    expose:
+      - "3000"
+    working_dir: '/home/app'
+  # SMTP server
+  app-assurmoi-mailhog:
+    image: mailhog/mailhog
+    ports: 
+      - 1025:1025 # smtp server
+      - 8025:8025 # web ui
+  # database
+  app-assurmoi-db:
+    image: mariadb
+    restart: always
+    environment:
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_DATABASE: assurmoidb
+    volumes:
+      - './db-data:/var/lib/mysql:rw'
+  # Database client
+  app-assurmoi-adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080
