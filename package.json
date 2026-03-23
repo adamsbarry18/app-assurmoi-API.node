@@ -18,8 +18,9 @@
   "devDependencies": {
     "@types/express": "^4.17.21",
     "@types/node": "^20.10.6",
-    "typescript": "^5.3.3",
-    "ts-node": "^10.9.2"
+    "nodemon": "^3.1.14",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
   },
   "homepage": "https://github.com/adamsbarry18/app-assurmoi-API.node#readme",
   "bugs": {
