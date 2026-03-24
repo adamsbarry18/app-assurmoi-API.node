@@ -1,16 +1,18 @@
 import { Request, Response, Router } from "express";
 import validateUsername from "../middlewares/users";
+import { getAllUsers, getUserById, createUser, updateUser, deleteUser } from "../services/users";
 
 const router = Router();
 
- router.post('/', validateUsername, (req: Request, res: Response) => {
-    const user = req.body;
-    res.status(201).json({ user });
-});
+router.get('/', getAllUsers);
 
-router.get('/:id', (req: Request, res: Response) => {
-    res.status(200).json({ user: req.params.id });
-});
+router.get('/:id', getUserById);
+
+router.post('/', validateUsername, createUser);
+
+router.put('/:id', updateUser);
+
+router.delete('/:id', deleteUser);
 
 
 export default router;
