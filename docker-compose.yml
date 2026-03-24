@@ -40,6 +40,8 @@ services:
       MARIADB_DATABASE: assurmoidb
     volumes:
       - './db-data:/var/lib/mysql:rw'
+    ports:
+      - 3306:3306
   # Database client
   app-assurmoi-adminer:
     image: adminer
