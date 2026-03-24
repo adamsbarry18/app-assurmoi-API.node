@@ -1,9 +1,9 @@
 import { DataTypes, Model } from 'sequelize';
-import dbInstance from '../config/database';
+import { sequelize } from '../config/config';
 
 class User extends Model {
 
-    /* 
+    /*  
     static associate(models: any) {
        Define associations here if needed
         this.belongsToMany(models.Person, 
@@ -38,7 +38,7 @@ User.init(
     },
   },
   {
-    sequelize: dbInstance,
+    sequelize,
     tableName: 'users'
   }
 );

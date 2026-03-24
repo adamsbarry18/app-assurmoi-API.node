@@ -1,14 +1,31 @@
-import { Sequelize } from "sequelize";
+import dotenv from 'dotenv';
+import type { EnvConfig } from './database.types';
 
-require('dotenv').config();
+dotenv.config();
 
-const dbInstance = new Sequelize(`mariadb://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`, {
+const database: EnvConfig = {
+  development: {
+    username: process.env.DB_USERNAME || 'root',
+    password: process.env.DB_PASSWORD || 'root',
+    database: process.env.DB_NAME || 'assurmoidb',
+    host: process.env.DB_HOST || 'localhost',
     dialect: 'mariadb',
-    dialectOptions: {
-        ssl: {
-            require: true
-        }
-    },
-});
+  },
+  test: {
+    username: process.env.DB_USERNAME || 'root',
+    password: process.env.DB_PASSWORD || 'root',
+    database: process.env.DB_NAME || 'assurmoidb_test',
+    host: process.env.DB_HOST || 'localhost',
+    dialect: 'mariadb',
+  },
+  production: {
+    username: process.env.DB_USERNAME || 'root',
+    password: process.env.DB_PASSWORD || 'root',
+    database: process.env.DB_NAME || 'assurmoidb_prod',
+    host: process.env.DB_HOST || 'localhost',
+    dialect: 'mariadb',
+  },
+};
 
-export default dbInstance;
+
+export = database;
