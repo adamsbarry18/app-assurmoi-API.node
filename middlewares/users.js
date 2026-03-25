@@ -1,19 +1,56 @@
-const { checkSchema } = require('express-validator')
+const { body, query, param, validationResult } = require('express-validator')
+const userModelModule = require('../models/user')
+const USER_ROLES = userModelModule.USER_ROLES
 
-async function validateUsername(req, res, next) {
-    const [ hasError ] = await checkSchema({
-        username: { notEmpty: true }
-    }).run(req);
-
-    if(hasError.isEmpty()) {
-        return next();
-    }
-    
-    res.status(400).json({
-        message: "missing username"
-    }).send();
+const handleValidationErrors = (req, res, next) => {
+  const errors = validationResult(req)
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() })
+  }
+  next()
 }
 
+const createUserValidators = [
+  body('username').trim().notEmpty().isLength({ max: 255 }),
+  body('email').trim().isEmail().normalizeEmail(),
+  body('password').isLength({ min: 8 }).withMessage('password must be at least 8 characters'),
+  body('role').isIn([...USER_ROLES]),
+  body('first_name').optional({ values: 'null' }).trim().isLength({ max: 255 }),
+  body('last_name').optional({ values: 'null' }).trim().isLength({ max: 255 }),
+  body('is_active').optional().isBoolean(),
+  handleValidationErrors
+]
+
+const updateUserValidators = [
+  param('id').isInt({ min: 1 }).toInt(),
+  body('username').optional().trim().notEmpty().isLength({ max: 255 }),
+  body('email').optional().trim().isEmail().normalizeEmail(),
+  body('password').optional().isLength({ min: 8 }),
+  body('role').optional().isIn([...USER_ROLES]),
+  body('first_name').optional({ values: 'null' }).trim().isLength({ max: 255 }),
+  body('last_name').optional({ values: 'null' }).trim().isLength({ max: 255 }),
+  body('is_active').optional().isBoolean(),
+  handleValidationErrors
+]
+
+const idParamValidator = [
+  param('id').isInt({ min: 1 }).toInt(),
+  handleValidationErrors
+]
+
+const listUsersQueryValidators = [
+  query('search').optional().trim().isLength({ max: 255 }),
+  query('role').optional().isIn([...USER_ROLES]),
+  query('is_active').optional().isIn(['true', 'false']),
+  query('limit').optional().isInt({ min: 1, max: 100 }).toInt(),
+  query('offset').optional().isInt({ min: 0 }).toInt(),
+  handleValidationErrors
+]
+
 module.exports = {
-    validateUsername
+  createUserValidators,
+  updateUserValidators,
+  idParamValidator,
+  listUsersQueryValidators,
+  USER_ROLES
 }

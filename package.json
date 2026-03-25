@@ -19,11 +19,13 @@
     "dev": "nodemon app.js"
   },
   "dependencies": {
+    "bcryptjs": "^2.4.3",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "express-validator": "^7.3.1",
     "mariadb": "^3.5.2",
+    "nodemailer": "^6.10.1",
     "sequelize": "^6.37.8"
   },
   "devDependencies": {

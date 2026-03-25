@@ -1,20 +1,30 @@
-'use strict';
+'use strict'
 
-/** @type {import('sequelize-cli').Migration} */
+const bcrypt = require('bcryptjs')
+
+/** @type {import('sequelize-cli').Seeder} */
 module.exports = {
   async up (queryInterface, Sequelize) {
-    await queryInterface.bulkInsert('User', [
+    const password_hash = await bcrypt.hash('MotDeP@ss123', 12)
+    await queryInterface.bulkInsert('users', [
       {
         username: 'saittirite',
-        password: 'MotDeP@ss123',
-        firstname: 'Soufian',
-        lastname: 'AIT TIRITE',
-        email: 's.aittirite@websociety.fr'
+        email: 's.aittirite@websociety.fr',
+        password_hash,
+        first_name: 'Soufian',
+        last_name: 'AIT TIRITE',
+        role: 'ADMIN',
+        session_token: null,
+        refresh_token: null,
+        two_factor_code: null,
+        is_active: true,
+        created_at: new Date(),
+        updated_at: new Date()
       }
-    ], {})
+    ])
   },
 
   async down (queryInterface, Sequelize) {
-    await queryInterface.bulkDelete('User', { username: 'saittirite' })
+    await queryInterface.bulkDelete('users', { username: 'saittirite' })
   }
-};
+}
