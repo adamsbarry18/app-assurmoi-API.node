@@ -5,7 +5,7 @@ import { checkSchema } from "express-validator";
 
 async function validateUsername(req: Request, res: Response, next: NextFunction) {
     const [ hasError ] = await checkSchema({
-        username: { notEmpty: true }
+        userName: { notEmpty: true }
     }).run(req);
 
     if (hasError.isEmpty()) {

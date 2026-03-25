@@ -1,14 +1,14 @@
 import fs from 'fs';
 import path from 'path';
 import { Sequelize, ModelStatic } from 'sequelize';
-import { sequelize } from '../config/config';
+import { dbInstance } from '../config/config';
 
 const db: {
   sequelize: Sequelize;
   Sequelize: typeof Sequelize;
   [key: string]: ModelStatic<any> | Sequelize | typeof Sequelize;
 } = {
-  sequelize,
+  sequelize: dbInstance,
   Sequelize
 };
 

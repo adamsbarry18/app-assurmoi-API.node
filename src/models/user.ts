@@ -1,8 +1,13 @@
 import { DataTypes, Model } from 'sequelize';
-import { sequelize } from '../config/config';
+import { dbInstance } from '../config/config';
 
 class User extends Model {
-
+    declare id: number;
+    declare userName: string;
+    declare password: string;
+    declare firstName?: string;
+    declare lastName?: string;
+    declare email: string;
     /*  
     static associate(models: any) {
        Define associations here if needed
@@ -38,8 +43,10 @@ User.init(
     },
   },
   {
-    sequelize,
-    tableName: 'users'
+    sequelize: dbInstance,
+    tableName: 'users',
+    modelName: 'User',
+    timestamps: true,
   }
 );
 

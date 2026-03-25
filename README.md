@@ -107,6 +107,30 @@ MARIADB_ROOT_PASSWORD=root            # Mot de passe root MariaDB
 MARIADB_DATABASE=assurmoidb           # Nom de la base de données
 ```
 
+# Migrations et Seeders (avec Sequelize CLI)
+### Installer Sequelize CLI globalement
+
+```bash
+npm install -g sequelize-cli
+```
+### Créer une migration
+
+```bash
+npx migration:generate --name create-users-table
+```
+### Exécuter les migrations
+
+```bash
+npx db:migrate
+```
+### Créer un seeder
+```bash
+npx seeder:generate --name demo-user
+```
+### Exécuter les seeders
+```bash
+npx db:seed:all
+```
 ### Accès aux services
 
 - **API**: http://localhost:3000
@@ -123,16 +147,15 @@ app-assurmoi-API/
 │
 ├── src/
 │   └── app.ts                 # Point d'entrée de l'application
-│
+│├── middlewares/                       # Fichiers compilés (généré après build)
+│   └── users.ts
 ├── dist/                       # Fichiers compilés (généré après build)
-│   └── app.js
-│
-├── db-data/                    # Volume Docker - Données MariaDB
-│   ├── assurmoidb/
-│   ├── mysql/
-│   ├── performance_schema/
-│   └── sys/
-│
+│   └── app.ts
+├── models/                       # Fichiers compilés (généré après build)
+│   └── index.ts
+│   └── user.ts
+├── services/                       # Fichiers compilés (généré après build)
+│   └── users.ts
 ├── node_modules/              # Dépendances npm (généré)
 │
 ├── docker-compose.yml         # Configuration des services Docker

@@ -1,9 +1,8 @@
 import Sequelize, { type QueryInterface } from 'sequelize';
 
-/** Sequelize CLI passe le constructeur Sequelize (DataTypes, etc.) en 2e argument. */
 export default {
   async up(queryInterface: QueryInterface, SequelizeTypes: typeof Sequelize) {
-    await queryInterface.createTable('User', {
+    await queryInterface.createTable('users', {
       id: {
         type: SequelizeTypes.INTEGER,
         autoIncrement: true,
@@ -29,10 +28,20 @@ export default {
         type: SequelizeTypes.STRING,
         allowNull: true,
       },
+      createdAt: {
+        type: SequelizeTypes.DATE,
+        defaultValue: SequelizeTypes.literal('CURRENT_TIMESTAMP'),
+        allowNull: false,
+      },
+      updatedAt: {
+        type: SequelizeTypes.DATE,
+        defaultValue: SequelizeTypes.literal('CURRENT_TIMESTAMP'),
+        allowNull: false,
+      },
     });
   },
 
   async down(queryInterface: QueryInterface) {
-    await queryInterface.dropTable('User');
+    await queryInterface.dropTable('users');
   },
 };

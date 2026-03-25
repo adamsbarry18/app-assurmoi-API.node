@@ -4,7 +4,6 @@ jspm_packages/
 
 # --- Environnement et Sécurité ---
 .env
-.env.local
 
 # --- Logs ---
 npm-debug.log*

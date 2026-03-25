@@ -5,7 +5,7 @@ import type { EnvConfig } from './database.types';
 const env = process.env.NODE_ENV || 'development';
 const dbConfig = database[env as keyof EnvConfig];
 
-const sequelize = new Sequelize(
+const dbInstance = new Sequelize(
   dbConfig.database,
   dbConfig.username,
   dbConfig.password,
@@ -17,4 +17,4 @@ const sequelize = new Sequelize(
 );
 
 export default database;
-export { sequelize };
+export { dbInstance };
