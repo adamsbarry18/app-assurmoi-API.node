@@ -15,30 +15,37 @@ module.exports = {
             type: Sequelize.INTEGER
           },
           username: {
-            type: Sequelize.STRING(255),
+            type: Sequelize.STRING,
             allowNull: false,
             unique: true
           },
           email: {
-            type: Sequelize.STRING(255),
+            type: Sequelize.STRING,
             allowNull: false,
             unique: true
           },
           password_hash: {
-            type: Sequelize.STRING(255),
+            type: Sequelize.STRING,
             allowNull: false
           },
           first_name: {
-            type: Sequelize.STRING(255),
+            type: Sequelize.STRING,
             allowNull: true
           },
           last_name: {
-            type: Sequelize.STRING(255),
+            type: Sequelize.STRING,
             allowNull: true
           },
           role: {
-            type: Sequelize.STRING(255),
-            allowNull: false
+            type: Sequelize.ENUM(
+              'ADMIN',
+              'PORTFOLIO_MANAGER',
+              'TRACKING_OFFICER',
+              'CUSTOMER_OFFICER',
+              'INSURED'
+            ),
+            allowNull: false,
+            defaultValue: 'INSURED'
           },
           session_token: {
             type: Sequelize.TEXT,
@@ -49,7 +56,7 @@ module.exports = {
             allowNull: true
           },
           two_factor_code: {
-            type: Sequelize.STRING(255),
+            type: Sequelize.STRING,
             allowNull: true
           },
           is_active: {

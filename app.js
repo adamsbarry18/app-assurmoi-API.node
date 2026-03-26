@@ -1,20 +1,27 @@
 const express = require('express')
-const app = express();
+const app = express()
 require('dotenv').config()
 const cors = require('cors')
-const initRoutes = require('./routes');
+const initRoutes = require('./routes')
+const logger = require('./core/logger')
+const { notFoundHandler, errorHandler } = require('./middlewares/errorHandler')
 
 const PORT = process.env.PORT || 3000
-app.use(express.json());
-app.use(cors({
+app.use(express.json())
+app.use(
+  cors({
     credentials: true,
-    origin: [ 'http://example.com', '*' ] //whitelist of domains
-}))
+    origin: ['http://example.com', '*']
+  })
+)
 
-initRoutes(app);
+initRoutes(app)
+
+app.use(notFoundHandler)
+app.use(errorHandler)
 
 app.listen(PORT, () => {
-    console.log('server running on port ', PORT)
+  logger.info('Serveur démarré', { port: PORT })
 })
 
 module.exports = app;

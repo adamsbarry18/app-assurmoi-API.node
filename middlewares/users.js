@@ -1,11 +1,16 @@
 const { body, query, param, validationResult } = require('express-validator')
 const userModelModule = require('../models/user')
+const { ERROR_CODES } = require('../core/errors')
 const USER_ROLES = userModelModule.USER_ROLES
 
 const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req)
   if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() })
+    return res.status(ERROR_CODES.VALIDATION_ERROR.status).json({
+      message: 'Validation des paramètres échouée',
+      code: ERROR_CODES.VALIDATION_ERROR.code,
+      errors: errors.array()
+    })
   }
   next()
 }

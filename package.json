@@ -1,17 +1,9 @@
 {
-  "name": "assurmoi",
+  "name": "app-assurmoi-api",
   "version": "1.0.0",
-  "description": "",
-  "homepage": "https://github.com/websocietyfr/assurmoi-supdevinciM2Dev2026#readme",
-  "bugs": {
-    "url": "https://github.com/websocietyfr/assurmoi-supdevinciM2Dev2026/issues"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/websocietyfr/assurmoi-supdevinciM2Dev2026.git"
-  },
+  "description": "App Assurmoi API",
   "license": "ISC",
-  "author": "Soufian AIT TIRITE",
+  "author": "Mamadou Barry <mabarry2018@gmail.com>",
   "type": "commonjs",
   "main": "app.js",
   "scripts": {
@@ -24,11 +16,20 @@
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "express-validator": "^7.3.1",
+    "jsonwebtoken": "^9.0.3",
     "mariadb": "^3.5.2",
     "nodemailer": "^6.10.1",
     "sequelize": "^6.37.8"
   },
   "devDependencies": {
     "sequelize-cli": "^6.6.5"
+  },
+    "homepage": "https://github.com/adamsbarry18/app-assurmoi-API.node#readme",
+  "bugs": {
+    "url": "https://github.com/adamsbarry18/app-assurmoi-API.node/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/adamsbarry18/app-assurmoi-API.node.git"
   }
 }

@@ -1,22 +1,23 @@
 const { Op } = require('sequelize')
 const bcrypt = require('bcryptjs')
 const { User, dbInstance } = require('../models')
+const { logError } = require('../core/logError')
+const { ERROR_CODES } = require('../core/errors')
 
 const BCRYPT_ROUNDS = 12
 
-const hashPassword = (plain) => bcrypt.hash(plain, BCRYPT_ROUNDS)
+const hashPassword = (password) => bcrypt.hash(password, BCRYPT_ROUNDS)
 
 const sanitizeUser = (user) => {
   if (!user) return null
-  const plain = typeof user.toJSON === 'function' ? user.toJSON() : user
-  delete plain.password_hash
-  delete plain.session_token
-  delete plain.refresh_token
-  delete plain.two_factor_code
-  return plain
+  const dataUser = typeof user.toJSON === 'function' ? user.toJSON() : user
+  delete dataUser.password_hash
+  delete dataUser.session_token
+  delete dataUser.refresh_token
+  delete dataUser.two_factor_code
+  return dataUser
 }
 
-/** Les query params sont des chaînes ; Sequelize + MariaDB exigent des entiers pour LIMIT/OFFSET. */
 function parseListPagination (query) {
   const rawLimit = query.limit
   const rawOffset = query.offset
@@ -61,8 +62,10 @@ const getAllUsers = async (req, res) => {
       meta: { total: count, limit, offset }
     })
   } catch (err) {
-    console.error(err)
-    return res.status(500).json({ message: 'Erreur lors de la récupération des utilisateurs' })
+    return logError(res, err, {
+      context: 'users.getAllUsers',
+      defaultMessage: 'Erreur lors de la récupération des utilisateurs'
+    })
   }
 }
 
@@ -71,12 +74,17 @@ const getUser = async (req, res) => {
     const id = req.params.id
     const user = await User.findByPk(id)
     if (!user) {
-      return res.status(404).json({ message: 'Utilisateur introuvable' })
+      return res.status(ERROR_CODES.NOT_FOUND.status).json({
+        message: 'Utilisateur introuvable',
+        code: ERROR_CODES.NOT_FOUND.code
+      })
     }
     return res.status(200).json({ data: sanitizeUser(user) })
   } catch (err) {
-    console.error(err)
-    return res.status(500).json({ message: 'Erreur lors de la récupération de l’utilisateur' })
+    return logError(res, err, {
+      context: 'users.getUser',
+      defaultMessage: 'Erreur lors de la récupération de l’utilisateur'
+    })
   }
 }
 
@@ -103,7 +111,10 @@ const createUser = async (req, res) => {
     })
     if (user) {
       await transaction.rollback()
-      return res.status(409).json({ message: 'Username ou email déjà utilisé' })
+      return res.status(ERROR_CODES.CONFLICT.status).json({
+        message: 'Username ou email déjà utilisé',
+        code: ERROR_CODES.CONFLICT.code
+      })
     }
 
     const created = await User.create(
@@ -123,13 +134,9 @@ const createUser = async (req, res) => {
     return res.status(201).json({ data: sanitizeUser(created) })
   } catch (err) {
     await transaction.rollback()
-    console.error(err)
-    if (err.name === 'SequelizeUniqueConstraintError') {
-      return res.status(409).json({ message: 'Contrainte d’unicité violée' })
-    }
-    return res.status(400).json({
-      message: 'Erreur lors de la création de l’utilisateur',
-      details: err.errors?.map((e) => e.message) ?? err.message
+    return logError(res, err, {
+      context: 'users.createUser',
+      defaultMessage: 'Erreur lors de la création de l’utilisateur'
     })
   }
 }
@@ -141,7 +148,10 @@ const updateUser = async (req, res) => {
     const user = await User.findByPk(userId, { transaction })
     if (!user) {
       await transaction.rollback()
-      return res.status(404).json({ message: 'Utilisateur introuvable' })
+      return res.status(ERROR_CODES.NOT_FOUND.status).json({
+        message: 'Utilisateur introuvable',
+        code: ERROR_CODES.NOT_FOUND.code
+      })
     }
 
     const {
@@ -167,7 +177,10 @@ const updateUser = async (req, res) => {
 
     if (Object.keys(updates).length === 0) {
       await transaction.rollback()
-      return res.status(400).json({ message: 'Aucun champ à mettre à jour' })
+      return res.status(ERROR_CODES.BAD_REQUEST.status).json({
+        message: 'Aucun champ à mettre à jour',
+        code: ERROR_CODES.BAD_REQUEST.code
+      })
     }
 
     if (updates.username || updates.email) {
@@ -183,7 +196,10 @@ const updateUser = async (req, res) => {
       })
       if (conflict) {
         await transaction.rollback()
-        return res.status(409).json({ message: 'Username ou email déjà utilisé' })
+        return res.status(ERROR_CODES.CONFLICT.status).json({
+          message: 'Username ou email déjà utilisé',
+          code: ERROR_CODES.CONFLICT.code
+        })
       }
     }
 
@@ -194,38 +210,36 @@ const updateUser = async (req, res) => {
     return res.status(200).json({ data: sanitizeUser(refreshed) })
   } catch (err) {
     await transaction.rollback()
-    console.error(err)
-    return res.status(400).json({
-      message: 'Erreur lors de la mise à jour',
-      details: err.errors?.map((e) => e.message) ?? err.message
+    return logError(res, err, {
+      context: 'users.updateUser',
+      defaultMessage: 'Erreur lors de la mise à jour'
     })
   }
 }
 
 const deleteUser = async (req, res) => {
-    const transaction = await dbInstance.transaction();
-    try {
-        const user_id = req.params.id
-        
-        const status = await User.destroy({
-            where: { id: user_id },
-            transaction
-        })
+  const transaction = await dbInstance.transaction()
+  try {
+    const user_id = req.params.id
 
-        transaction.commit();
-        return res.status(200).json({
-            message: "Successfuly deleted",
-            status
-        })
-    } catch(err) {
-        transaction.rollback();
-        return res.status(400).json({
-            message: 'Error on user deletion',
-            stacktrace: err.errors
-        })
-    }
+    const status = await User.destroy({
+      where: { id: user_id },
+      transaction
+    })
+
+    await transaction.commit()
+    return res.status(200).json({
+      message: 'Successfuly deleted',
+      status
+    })
+  } catch (err) {
+    await transaction.rollback()
+    return logError(res, err, {
+      context: 'users.deleteUser',
+      defaultMessage: 'Erreur lors de la suppression'
+    })
+  }
 }
-
 
 const deactivateUser = async (req, res) => {
   const transaction = await dbInstance.transaction()
@@ -234,7 +248,10 @@ const deactivateUser = async (req, res) => {
     const user = await User.findByPk(userId, { transaction })
     if (!user) {
       await transaction.rollback()
-      return res.status(404).json({ message: 'Utilisateur introuvable' })
+      return res.status(ERROR_CODES.NOT_FOUND.status).json({
+        message: 'Utilisateur introuvable',
+        code: ERROR_CODES.NOT_FOUND.code
+      })
     }
 
     await user.update({ is_active: false }, { transaction })
@@ -247,8 +264,10 @@ const deactivateUser = async (req, res) => {
     })
   } catch (err) {
     await transaction.rollback()
-    console.error(err)
-    return res.status(500).json({ message: 'Erreur lors de la désactivation' })
+    return logError(res, err, {
+      context: 'users.deactivateUser',
+      defaultMessage: 'Erreur lors de la désactivation'
+    })
   }
 }
 

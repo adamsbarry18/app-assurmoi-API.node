@@ -21,30 +21,31 @@ const User = (sequelize, DataTypes) => {
         autoIncrement: true
       },
       username: {
-        type: DataTypes.STRING(255),
+        type: DataTypes.STRING,
         allowNull: false,
         unique: true
       },
       email: {
-        type: DataTypes.STRING(255),
+        type: DataTypes.STRING,
         allowNull: false,
         unique: true
       },
       password_hash: {
-        type: DataTypes.STRING(255),
+        type: DataTypes.STRING,
         allowNull: false
       },
       first_name: {
-        type: DataTypes.STRING(255),
+        type: DataTypes.STRING,
         allowNull: true
       },
       last_name: {
-        type: DataTypes.STRING(255),
+        type: DataTypes.STRING,
         allowNull: true
       },
       role: {
-        type: DataTypes.STRING(255),
-        allowNull: false
+        type: DataTypes.ENUM(...USER_ROLES),
+        allowNull: false,
+        defaultValue: 'INSURED'
       },
       session_token: {
         type: DataTypes.TEXT,
@@ -55,7 +56,7 @@ const User = (sequelize, DataTypes) => {
         allowNull: true
       },
       two_factor_code: {
-        type: DataTypes.STRING(255),
+        type: DataTypes.STRING,
         allowNull: true
       },
       is_active: {
