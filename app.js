@@ -1,6 +1,11 @@
 const express = require('express')
 const app = express()
 require('dotenv').config()
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 16) {
+  console.warn(
+    '[app] JWT_SECRET manquant ou trop court (min. 16 car.) — /api/auth échouera.'
+  )
+}
 const cors = require('cors')
 const initRoutes = require('./routes')
 const swaggerRoutes = require('./routes/swagger')
