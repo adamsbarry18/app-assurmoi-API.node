@@ -49,4 +49,17 @@ function debug (msg, meta) {
   line('debug', msg, meta)
 }
 
-module.exports = { error, warn, info, debug, serializeError }
+/**
+ * Une ligne lisible en console (sans JSON), pour les logs type access HTTP.
+ */
+function plain (level, message) {
+  if (!shouldLog(level)) return
+  const ts = new Date().toISOString()
+  const lvl = level.toUpperCase().padEnd(5)
+  const out = `[${ts}] ${lvl} ${message}`
+  if (level === 'error') console.error(out)
+  else if (level === 'warn') console.warn(out)
+  else console.log(out)
+}
+
+module.exports = { error, warn, info, debug, plain, serializeError }

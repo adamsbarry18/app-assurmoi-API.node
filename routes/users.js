@@ -1,5 +1,6 @@
 const express = require('express')
 const router = express.Router()
+const { authenticate, requireRoles } = require('../middlewares/auth')
 const {
   createUserValidators,
   updateUserValidators,
@@ -15,11 +16,29 @@ const {
   deleteUser
 } = require('../services/users')
 
-router.get('/', listUsersQueryValidators, getAllUsers)
-router.post('/', createUserValidators, createUser)
-router.get('/:id', idParamValidator, getUser)
-router.put('/:id', updateUserValidators, updateUser)
-router.patch('/:id/deactivate', idParamValidator, deactivateUser)
-router.delete('/:id', idParamValidator, deleteUser)
+router.get('/', authenticate, listUsersQueryValidators, getAllUsers)
+router.post(
+  '/',
+  authenticate,
+  requireRoles('ADMIN'),
+  createUserValidators,
+  createUser
+)
+router.get('/:id', authenticate, idParamValidator, getUser)
+router.put('/:id', authenticate, updateUserValidators, updateUser)
+router.patch(
+  '/:id/deactivate',
+  authenticate,
+  requireRoles('ADMIN'),
+  idParamValidator,
+  deactivateUser
+)
+router.delete(
+  '/:id',
+  authenticate,
+  requireRoles('ADMIN'),
+  idParamValidator,
+  deleteUser
+)
 
 module.exports = router

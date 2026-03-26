@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: AssurMoi API
   description: |
-    API REST — gestion des utilisateurs.
+    API REST — Gestion des sinistres assurance.
     Les erreurs renvoient `{ message, code }` ; la validation peut inclure `errors` ou `details`.
   version: 1.0.0
 
@@ -12,9 +12,165 @@ servers:
 
 tags:
   - name: Système
+  - name: Authentification
   - name: Utilisateurs
 
 paths:
+  /api/auth/login:
+    post:
+      tags: [Authentification]
+      summary: Connexion (access + refresh JWT)
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  description: Adresse email ou nom d’utilisateur
+                password: { type: string }
+      responses:
+        '200':
+          description: Bearer access token + refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/auth/refresh:
+    post:
+      tags: [Authentification]
+      summary: Rafraîchir les tokens
+      operationId: refreshToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/auth/logout:
+    post:
+      tags: [Authentification]
+      summary: Déconnexion (révoque le refresh côté serveur)
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Pas de corps
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/auth/me:
+    get:
+      tags: [Authentification]
+      summary: Profil courant
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSingleResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/auth/forgot-password:
+    post:
+      tags: [Authentification]
+      summary: Demande de réinitialisation (email)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        '200':
+          description: Message générique (anti-énumération)
+
+  /api/auth/reset-password:
+    post:
+      tags: [Authentification]
+      summary: Nouveau mot de passe (token reçu par email)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, password]
+              properties:
+                token: { type: string }
+                password: { type: string, minLength: 8 }
+      responses:
+        '200':
+          description: OK
+
+  /api/auth/invite:
+    post:
+      tags: [Authentification]
+      summary: Envoyer une invitation (ADMIN)
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, role]
+              properties:
+                email: { type: string, format: email }
+                role:
+                  $ref: '#/components/schemas/UserRole'
+      responses:
+        '200':
+          description: Invitation envoyée
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/auth/complete-invite:
+    post:
+      tags: [Authentification]
+      summary: Finaliser l’inscription via lien d’invitation
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, username, password]
+              properties:
+                token: { type: string }
+                username: { type: string }
+                password: { type: string, minLength: 8 }
+                first_name: { type: string }
+                last_name: { type: string }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+
   /:
     get:
       tags: [Système]
@@ -35,6 +191,8 @@ paths:
     get:
       tags: [Utilisateurs]
       summary: Liste des utilisateurs
+      security:
+        - bearerAuth: []
       operationId: listUsers
       parameters:
         - name: search
@@ -69,6 +227,8 @@ paths:
     post:
       tags: [Utilisateurs]
       summary: Créer un utilisateur
+      security:
+        - bearerAuth: []
       operationId: createUser
       requestBody:
         required: true
@@ -96,6 +256,8 @@ paths:
     get:
       tags: [Utilisateurs]
       summary: Détail utilisateur
+      security:
+        - bearerAuth: []
       operationId: getUserById
       parameters:
         - $ref: '#/components/parameters/UserId'
@@ -115,6 +277,8 @@ paths:
     put:
       tags: [Utilisateurs]
       summary: Mettre à jour un utilisateur
+      security:
+        - bearerAuth: []
       operationId: updateUser
       parameters:
         - $ref: '#/components/parameters/UserId'
@@ -151,6 +315,8 @@ paths:
     delete:
       tags: [Utilisateurs]
       summary: Supprimer définitivement un utilisateur
+      security:
+        - bearerAuth: []
       operationId: deleteUser
       parameters:
         - $ref: '#/components/parameters/UserId'
@@ -172,6 +338,8 @@ paths:
     patch:
       tags: [Utilisateurs]
       summary: Désactiver un utilisateur
+      security:
+        - bearerAuth: []
       operationId: deactivateUser
       parameters:
         - $ref: '#/components/parameters/UserId'
@@ -189,6 +357,12 @@ paths:
           $ref: '#/components/responses/InternalError'
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
   parameters:
     UserId:
       name: id
@@ -278,6 +452,24 @@ components:
         data:
           $ref: '#/components/schemas/User'
 
+    LoginResponse:
+      type: object
+      properties:
+        accessToken: { type: string }
+        refreshToken: { type: string }
+        tokenType: { type: string, example: Bearer }
+        expiresIn: { type: integer, description: Durée de vie de l’access token (secondes) }
+        user:
+          $ref: '#/components/schemas/User'
+
+    TokenPair:
+      type: object
+      properties:
+        accessToken: { type: string }
+        refreshToken: { type: string }
+        tokenType: { type: string }
+        expiresIn: { type: integer }
+
     ErrorMessage:
       type: object
       properties:
@@ -320,6 +512,20 @@ components:
             $ref: '#/components/schemas/ErrorMessage'
 
     InternalError:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorMessage'
+
+    Unauthorized:
+      description: Non authentifié
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorMessage'
+
+    Forbidden:
+      description: Droits insuffisants
       content:
         application/json:
           schema:
