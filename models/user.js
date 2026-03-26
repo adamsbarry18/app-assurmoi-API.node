@@ -1,11 +1,11 @@
 const { Model } = require('sequelize')
 
 const USER_ROLES = Object.freeze([
-  'ADMIN',
-  'PORTFOLIO_MANAGER',
-  'TRACKING_OFFICER',
-  'CUSTOMER_OFFICER',
-  'INSURED'
+  'ADMIN', // Super administrateur de l'application
+  'PORTFOLIO_MANAGER', // Superviseur de portefeuille 
+  'TRACKING_OFFICER', // Chargé de suivi de dossier
+  'CUSTOMER_OFFICER', // Chargé de clientèle de sinistre
+  'INSURED' // Assuré (utilisateur final)
 ])
 
 const User = (sequelize, DataTypes) => {

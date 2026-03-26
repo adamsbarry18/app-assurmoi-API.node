@@ -7,8 +7,11 @@
   "type": "commonjs",
   "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon app.js"
+    "dev": "nodemon app.js",
+    "start": "node app.js",
+    "db:migrate": "sequelize db:migrate",
+    "db:migrate:undo": "sequelize db:migrate:undo",
+    "db:seed": "sequelize db:seed:all"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -16,15 +19,17 @@
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "express-validator": "^7.3.1",
+    "js-yaml": "^4.1.1",
     "jsonwebtoken": "^9.0.3",
     "mariadb": "^3.5.2",
     "nodemailer": "^6.10.1",
-    "sequelize": "^6.37.8"
+    "sequelize": "^6.37.8",
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "sequelize-cli": "^6.6.5"
   },
-    "homepage": "https://github.com/adamsbarry18/app-assurmoi-API.node#readme",
+  "homepage": "https://github.com/adamsbarry18/app-assurmoi-API.node#readme",
   "bugs": {
     "url": "https://github.com/adamsbarry18/app-assurmoi-API.node/issues"
   },

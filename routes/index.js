@@ -10,7 +10,8 @@ function initRoutes (app) {
   }, (req, res) => {
     res.status(200).json({
       message: "Bienvenue sur l'API AssurMoi",
-      docs: '/api/users'
+      docs: '/api-docs',
+      users: '/api/users'
     })
   })
 }

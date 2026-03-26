@@ -1,0 +1,326 @@
+openapi: 3.0.3
+info:
+  title: AssurMoi API
+  description: |
+    API REST — gestion des utilisateurs.
+    Les erreurs renvoient `{ message, code }` ; la validation peut inclure `errors` ou `details`.
+  version: 1.0.0
+
+servers:
+  - url: /
+    description: Serveur courant (même origine que cette doc)
+
+tags:
+  - name: Système
+  - name: Utilisateurs
+
+paths:
+  /:
+    get:
+      tags: [Système]
+      summary: Accueil
+      operationId: getRoot
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  docs: { type: string }
+
+  /api/users:
+    get:
+      tags: [Utilisateurs]
+      summary: Liste des utilisateurs
+      operationId: listUsers
+      parameters:
+        - name: search
+          in: query
+          schema: { type: string, maxLength: 255 }
+        - name: role
+          in: query
+          schema:
+            $ref: '#/components/schemas/UserRole'
+        - name: is_active
+          in: query
+          description: Chaînes `"true"` ou `"false"`
+          schema: { type: string, enum: ['true', 'false'] }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - name: offset
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        '200':
+          description: Liste paginée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserListResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      tags: [Utilisateurs]
+      summary: Créer un utilisateur
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSingleResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/users/{id}:
+    get:
+      tags: [Utilisateurs]
+      summary: Détail utilisateur
+      operationId: getUserById
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSingleResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    put:
+      tags: [Utilisateurs]
+      summary: Mettre à jour un utilisateur
+      operationId: updateUser
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdate'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSingleResponse'
+        '400':
+          description: Validation ou aucun champ à mettre à jour
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ValidationErrorBody'
+                  - $ref: '#/components/schemas/ErrorMessage'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    delete:
+      tags: [Utilisateurs]
+      summary: Supprimer définitivement un utilisateur
+      operationId: deleteUser
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  status: { type: integer, description: Lignes supprimées }
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/users/{id}/deactivate:
+    patch:
+      tags: [Utilisateurs]
+      summary: Désactiver un utilisateur
+      operationId: deactivateUser
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDeactivateResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  parameters:
+    UserId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+
+  schemas:
+    UserRole:
+      type: string
+      enum:
+        - ADMIN
+        - PORTFOLIO_MANAGER
+        - TRACKING_OFFICER
+        - CUSTOMER_OFFICER
+        - INSURED
+
+    User:
+      type: object
+      properties:
+        id: { type: integer }
+        username: { type: string }
+        email: { type: string, format: email }
+        first_name: { type: string, nullable: true }
+        last_name: { type: string, nullable: true }
+        role:
+          $ref: '#/components/schemas/UserRole'
+        is_active: { type: boolean }
+        created_at: { type: string, format: date-time, nullable: true }
+        updated_at: { type: string, format: date-time, nullable: true }
+
+    UserCreate:
+      type: object
+      required: [username, email, password, role]
+      properties:
+        username: { type: string, maxLength: 255 }
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+        role:
+          $ref: '#/components/schemas/UserRole'
+        first_name: { type: string }
+        last_name: { type: string }
+        is_active: { type: boolean }
+
+    UserUpdate:
+      type: object
+      minProperties: 1
+      properties:
+        username: { type: string }
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+        role:
+          $ref: '#/components/schemas/UserRole'
+        first_name: { type: string }
+        last_name: { type: string }
+        is_active: { type: boolean }
+
+    ListMeta:
+      type: object
+      properties:
+        total: { type: integer }
+        limit: { type: integer }
+        offset: { type: integer }
+
+    UserListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        meta:
+          $ref: '#/components/schemas/ListMeta'
+
+    UserSingleResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/User'
+
+    UserDeactivateResponse:
+      type: object
+      properties:
+        message: { type: string }
+        data:
+          $ref: '#/components/schemas/User'
+
+    ErrorMessage:
+      type: object
+      properties:
+        message: { type: string }
+        code: { type: string }
+      required: [message, code]
+
+    ValidationErrorBody:
+      type: object
+      properties:
+        message: { type: string }
+        code: { type: string, example: VALIDATION_ERROR }
+        errors:
+          type: array
+          items: { type: object }
+
+    SequelizeValidationBody:
+      type: object
+      properties:
+        message: { type: string }
+        code: { type: string }
+        details:
+          type: array
+          items: { type: string }
+
+  responses:
+    ValidationError:
+      description: Paramètres ou corps invalides
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: '#/components/schemas/ValidationErrorBody'
+              - $ref: '#/components/schemas/SequelizeValidationBody'
+
+    NotFound:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorMessage'
+
+    InternalError:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorMessage'
