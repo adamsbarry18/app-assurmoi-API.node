@@ -12,6 +12,11 @@ const {
   sinisterIsComplete,
   createFolderRecord
 } = require('./folderCore')
+const {
+  loadFolderStepsOrdered,
+  assertCloseBusinessRules
+} = require('./folderWorkflow')
+const { FOLDER_SCENARIOS } = require('../models/sinisterfolder')
 
 const OFFICER_ROLES_FOR_ASSIGNMENT = ['TRACKING_OFFICER', 'ADMIN']
 
@@ -145,6 +150,10 @@ const createFolder = async (req, res) => {
   try {
     const sinisterId = req.body.sinister_id
     const force = Boolean(req.body.force)
+    const scenario =
+      req.body.scenario !== undefined && req.body.scenario !== ''
+        ? req.body.scenario
+        : null
 
     const sinister = await Sinister.findByPk(sinisterId, { transaction })
     if (!sinister) {
@@ -189,6 +198,9 @@ const createFolder = async (req, res) => {
     }
 
     const created = await createFolderRecord(sinisterId, { transaction })
+    if (scenario && FOLDER_SCENARIOS.includes(scenario)) {
+      await created.update({ scenario }, { transaction })
+    }
     await transaction.commit()
 
     const full = await SinisterFolder.findByPk(created.id, {
@@ -279,7 +291,10 @@ const closeFolder = async (req, res) => {
   const transaction = await dbInstance.transaction()
   try {
     const id = req.params.id
-    const folder = await SinisterFolder.findByPk(id, { transaction })
+    const folder = await SinisterFolder.findByPk(id, {
+      include: [{ model: Sinister, as: 'sinister' }],
+      transaction
+    })
     if (!folder) {
       await transaction.rollback()
       return res.status(ERROR_CODES.NOT_FOUND.status).json({
@@ -299,6 +314,9 @@ const closeFolder = async (req, res) => {
       })
     }
 
+    const steps = await loadFolderStepsOrdered(id, { transaction })
+    assertCloseBusinessRules(folder, folder.sinister, steps)
+
     await folder.update(
       {
         is_closed: true,
@@ -317,6 +335,12 @@ const closeFolder = async (req, res) => {
     })
   } catch (err) {
     await transaction.rollback()
+    if (err instanceof AppError) {
+      return res.status(err.statusCode).json({
+        message: err.message,
+        code: err.code
+      })
+    }
     return logError(res, err, {
       context: 'folders.closeFolder',
       defaultMessage: 'Erreur lors de la clôture'

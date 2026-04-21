@@ -31,6 +31,7 @@ const folderIdParamValidator = [
 const createFolderValidators = [
   body('sinister_id').isInt({ min: 1 }).toInt(),
   body('force').optional().isBoolean(),
+  body('scenario').optional().isIn([...FOLDER_SCENARIOS]),
   handleValidationErrors
 ]
 

@@ -825,6 +825,10 @@ paths:
       description: |
         Rôles : ADMIN, PORTFOLIO_MANAGER.
         Met `is_closed` à true et `status` à CLOSED.
+
+        **Règles** : si une étape `PAYMENT_SETTLED` existe, délai de **48h** après la dernière avant clôture.
+        Responsabilité **100%** sur le sinistre : pas d’étape de refacturation obligatoire.
+        **0% ou 50%** : étape `THIRD_PARTY_REBILLING_CONFIRMED` requise.
       security:
         - bearerAuth: []
       operationId: closeFolder
@@ -844,6 +848,81 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/folders/{id}/steps:
+    get:
+      tags: [Dossiers]
+      summary: Lister les étapes du dossier (ordre chronologique)
+      description: |
+        Rôles : ADMIN, PORTFOLIO_MANAGER, TRACKING_OFFICER, CUSTOMER_OFFICER.
+      security:
+        - bearerAuth: []
+      operationId: listFolderSteps
+      parameters:
+        - $ref: '#/components/parameters/FolderId'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FolderStepListResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      tags: [Dossiers]
+      summary: Enregistrer une étape (workflow)
+      description: |
+        Rôles : ADMIN, PORTFOLIO_MANAGER, TRACKING_OFFICER (ce dernier uniquement s’il est `assigned_officer_id` du dossier).
+
+        **Documents** : tout `document_id` doit référencer un document avec `is_validated = true`.
+
+        **Types structurants** (scénario dossier requis) :
+        - `S1_EXPERT_REPORT` + scénario `REPAIRABLE` → document type `EXPERT_REPORT`
+        - `S1_INVOICE` + `REPAIRABLE` → `INVOICE`
+        - `S2_RIB` + `TOTAL_LOSS` → `RIB`
+
+        **Clôture** : enregistrer `PAYMENT_SETTLED` avant clôture pour déclencher le délai de 48h.
+        Si responsabilité sinistre 0% ou 50%, une étape `THIRD_PARTY_REBILLING_CONFIRMED` est obligatoire avant clôture (100% : refacturation non exigée).
+      security:
+        - bearerAuth: []
+      operationId: createFolderStep
+      parameters:
+        - $ref: '#/components/parameters/FolderId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FolderStepCreate'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FolderStepSingleResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
         '500':
           $ref: '#/components/responses/InternalError'
 
@@ -1282,6 +1361,36 @@ components:
         force:
           type: boolean
           description: ADMIN / PORTFOLIO_MANAGER uniquement — crée le dossier sans exiger la complétude des pièces
+        scenario:
+          $ref: '#/components/schemas/FolderScenario'
+          description: Optionnel — fixe le scénario pour les étapes S1 / S2
+
+    FolderStepCreate:
+      type: object
+      required: [step_type]
+      properties:
+        step_type:
+          type: string
+          maxLength: 255
+          description: |
+            Ex. `S1_EXPERT_REPORT`, `S1_INVOICE`, `S2_RIB`, `PAYMENT_SETTLED`, `THIRD_PARTY_REBILLING_CONFIRMED`, ou libre.
+        value: { type: string, nullable: true, description: Donnée libre (JSON texte, date, etc.) }
+        document_id: { type: integer, minimum: 1, nullable: true }
+        performed_by_id: { type: integer, minimum: 1, nullable: true, description: Réservé ADMIN si différent du JWT }
+
+    FolderStepListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/FolderStep'
+
+    FolderStepSingleResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/FolderStep'
 
     FolderAssign:
       type: object
