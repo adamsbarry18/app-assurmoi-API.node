@@ -10,7 +10,11 @@ const STEP_TYPE = Object.freeze({
   S1_INVOICE: 'S1_INVOICE',
   S2_RIB: 'S2_RIB',
   PAYMENT_SETTLED: 'PAYMENT_SETTLED',
-  THIRD_PARTY_REBILLING_CONFIRMED: 'THIRD_PARTY_REBILLING_CONFIRMED'
+  THIRD_PARTY_REBILLING_CONFIRMED: 'THIRD_PARTY_REBILLING_CONFIRMED',
+  /** Échéance expertise (value = date / libellé) — déclenche une alerte interne */
+  EXPERTISE_ECHEANCE: 'EXPERTISE_ECHEANCE',
+  /** Autre échéance métier (value = date ou description) */
+  GENERIC_ECHEANCE: 'GENERIC_ECHEANCE'
 })
 
 const HOURS_48_MS = 48 * 60 * 60 * 1000

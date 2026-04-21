@@ -1,6 +1,7 @@
 const {
   FolderStep,
   SinisterFolder,
+  Sinister,
   Document,
   User,
   dbInstance
@@ -9,6 +10,7 @@ const { logError } = require('../core/logError')
 const { ERROR_CODES, AppError } = require('../core/errors')
 const { assertStepDocumentRules } = require('./folderWorkflow')
 const { recordHistory, HISTORY_ACTION } = require('./historyAudit')
+const { dispatchForFolderStep } = require('./notificationDispatch')
 
 const ROLES_STEP_WRITE = ['ADMIN', 'PORTFOLIO_MANAGER', 'TRACKING_OFFICER']
 
@@ -158,6 +160,15 @@ const createFolderStep = async (req, res) => {
       entityId: step.id,
       action: `${HISTORY_ACTION.FOLDER_STEP_CREATED}:${stepType}`
     })
+
+    const sinister = await Sinister.findByPk(folder.sinister_id)
+    if (sinister) {
+      await dispatchForFolderStep({
+        folder,
+        sinister,
+        step
+      })
+    }
 
     return res.status(201).json({ data: full })
   } catch (err) {

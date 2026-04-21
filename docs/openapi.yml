@@ -22,6 +22,8 @@ tags:
     description: Dossiers de prise en charge (sinister_folders, étapes)
   - name: Historisation
     description: Journal des actions (history_logs)
+  - name: Notifications
+    description: Notifications in-app (PUSH interne) — pas d’envoi email automatique dans cette version
 
 paths:
   /api/auth/login:
@@ -200,6 +202,7 @@ paths:
                   documents: { type: string }
                   folders: { type: string }
                   history: { type: string }
+                  notifications: { type: string }
 
   /api/users:
     get:
@@ -899,6 +902,66 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /api/notifications:
+    get:
+      tags: [Notifications]
+      summary: Mes notifications
+      description: |
+        Liste paginée des notifications de l’utilisateur JWT (`user_id`).
+        Déclencheurs internes : document à valider, étape RIB (suivi), règlement + 48h, types d’étape `EXPERTISE_ECHEANCE` / `GENERIC_ECHEANCE`.
+      security:
+        - bearerAuth: []
+      operationId: listMyNotifications
+      parameters:
+        - name: is_read
+          in: query
+          schema: { type: string, enum: ['true', 'false'] }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - name: offset
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationListResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/notifications/{id}/read:
+    patch:
+      tags: [Notifications]
+      summary: Marquer une notification comme lue
+      security:
+        - bearerAuth: []
+      operationId: markNotificationRead
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationSingleResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /api/folders/{id}/steps:
     get:
       tags: [Dossiers]
@@ -1487,6 +1550,37 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/HistoryLogEntry'
+
+    NotificationChannel:
+      type: string
+      enum: [EMAIL, PUSH]
+
+    Notification:
+      type: object
+      properties:
+        id: { type: integer }
+        user_id: { type: integer }
+        content: { type: string, nullable: true }
+        channel:
+          $ref: '#/components/schemas/NotificationChannel'
+        is_read: { type: boolean }
+        created_at: { type: string, format: date-time }
+
+    NotificationListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Notification'
+        meta:
+          $ref: '#/components/schemas/ListMeta'
+
+    NotificationSingleResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/Notification'
 
   responses:
     ValidationError:

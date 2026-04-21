@@ -15,6 +15,10 @@ const User = (sequelize, DataTypes) => {
         foreignKey: 'user_id',
         as: 'historyLogs'
       })
+      User.hasMany(models.Notification, {
+        foreignKey: 'user_id',
+        as: 'notifications'
+      })
     }
   }
 

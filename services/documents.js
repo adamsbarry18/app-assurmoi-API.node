@@ -5,6 +5,7 @@ const { logError } = require('../core/logError')
 const { ERROR_CODES, AppError } = require('../core/errors')
 const { ensureUploadRoot, absoluteFromRelative, guessContentType } = require('../utils/uploadPaths')
 const { recordHistory, HISTORY_ACTION } = require('./historyAudit')
+const { notifyDocumentPendingValidation } = require('./notificationDispatch')
 
 const ALLOWED_UPLOAD_MIMES = new Set([
   'application/pdf',
@@ -63,6 +64,11 @@ const uploadDocument = async (req, res) => {
       entityType: 'document',
       entityId: doc.id,
       action: HISTORY_ACTION.DOCUMENT_UPLOADED
+    })
+
+    await notifyDocumentPendingValidation({
+      documentId: doc.id,
+      documentType: doc.type
     })
 
     return res.status(201).json({
