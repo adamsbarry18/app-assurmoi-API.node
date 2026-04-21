@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs')
 const { User, dbInstance } = require('../models')
 const { logError } = require('../core/logError')
 const { ERROR_CODES } = require('../core/errors')
+const { recordHistory, HISTORY_ACTION } = require('./historyAudit')
 
 const BCRYPT_ROUNDS = 12
 
@@ -131,6 +132,12 @@ const createUser = async (req, res) => {
     )
 
     await transaction.commit()
+    await recordHistory({
+      userId: req.user.id,
+      entityType: 'user',
+      entityId: created.id,
+      action: HISTORY_ACTION.USER_CREATED
+    })
     return res.status(201).json({ data: sanitizeUser(created) })
   } catch (err) {
     await transaction.rollback()
@@ -207,6 +214,12 @@ const updateUser = async (req, res) => {
     await transaction.commit()
 
     const refreshed = await User.findByPk(userId)
+    await recordHistory({
+      userId: req.user.id,
+      entityType: 'user',
+      entityId: Number(userId),
+      action: HISTORY_ACTION.USER_UPDATED
+    })
     return res.status(200).json({ data: sanitizeUser(refreshed) })
   } catch (err) {
     await transaction.rollback()
@@ -228,6 +241,12 @@ const deleteUser = async (req, res) => {
     })
 
     await transaction.commit()
+    await recordHistory({
+      userId: req.user.id,
+      entityType: 'user',
+      entityId: Number(user_id),
+      action: HISTORY_ACTION.USER_DELETED
+    })
     return res.status(200).json({
       message: 'Successfuly deleted',
       status
@@ -258,6 +277,12 @@ const deactivateUser = async (req, res) => {
     await transaction.commit()
 
     const refreshed = await User.findByPk(userId)
+    await recordHistory({
+      userId: req.user.id,
+      entityType: 'user',
+      entityId: Number(userId),
+      action: HISTORY_ACTION.USER_DEACTIVATED
+    })
     return res.status(200).json({
       message: 'Utilisateur désactivé',
       data: sanitizeUser(refreshed)

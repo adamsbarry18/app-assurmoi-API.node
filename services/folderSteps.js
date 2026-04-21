@@ -8,6 +8,7 @@ const {
 const { logError } = require('../core/logError')
 const { ERROR_CODES, AppError } = require('../core/errors')
 const { assertStepDocumentRules } = require('./folderWorkflow')
+const { recordHistory, HISTORY_ACTION } = require('./historyAudit')
 
 const ROLES_STEP_WRITE = ['ADMIN', 'PORTFOLIO_MANAGER', 'TRACKING_OFFICER']
 
@@ -149,6 +150,13 @@ const createFolderStep = async (req, res) => {
           attributes: ['id', 'username', 'email', 'role', 'first_name', 'last_name']
         }
       ]
+    })
+
+    await recordHistory({
+      userId: req.user.id,
+      entityType: 'folder_step',
+      entityId: step.id,
+      action: `${HISTORY_ACTION.FOLDER_STEP_CREATED}:${stepType}`
     })
 
     return res.status(201).json({ data: full })

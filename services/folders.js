@@ -17,6 +17,7 @@ const {
   assertCloseBusinessRules
 } = require('./folderWorkflow')
 const { FOLDER_SCENARIOS } = require('../models/sinisterfolder')
+const { recordHistory, HISTORY_ACTION } = require('./historyAudit')
 
 const OFFICER_ROLES_FOR_ASSIGNMENT = ['TRACKING_OFFICER', 'ADMIN']
 
@@ -206,6 +207,12 @@ const createFolder = async (req, res) => {
     const full = await SinisterFolder.findByPk(created.id, {
       include: folderIncludeDetail
     })
+    await recordHistory({
+      userId: req.user.id,
+      entityType: 'folder',
+      entityId: created.id,
+      action: HISTORY_ACTION.FOLDER_CREATED
+    })
     return res.status(201).json({ data: full })
   } catch (err) {
     await transaction.rollback()
@@ -271,6 +278,12 @@ const assignOfficer = async (req, res) => {
     const full = await SinisterFolder.findByPk(id, {
       include: folderIncludeDetail
     })
+    await recordHistory({
+      userId: req.user.id,
+      entityType: 'folder',
+      entityId: Number(id),
+      action: HISTORY_ACTION.FOLDER_ASSIGNED
+    })
     return res.status(200).json({ data: full })
   } catch (err) {
     await transaction.rollback()
@@ -328,6 +341,12 @@ const closeFolder = async (req, res) => {
 
     const full = await SinisterFolder.findByPk(id, {
       include: folderIncludeDetail
+    })
+    await recordHistory({
+      userId: req.user.id,
+      entityType: 'folder',
+      entityId: Number(id),
+      action: HISTORY_ACTION.FOLDER_CLOSED
     })
     return res.status(200).json({
       message: 'Dossier clôturé',
