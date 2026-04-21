@@ -14,6 +14,12 @@ tags:
   - name: Système
   - name: Authentification
   - name: Utilisateurs
+  - name: Sinistres
+    description: Déclarations et dossiers sinistre (liens documents CNI, carte grise, attestation)
+  - name: Documents
+    description: Upload, consultation et validation des pièces jointes
+  - name: Dossiers
+    description: Dossiers de prise en charge (sinister_folders, étapes)
 
 paths:
   /api/auth/login:
@@ -186,6 +192,11 @@ paths:
                 properties:
                   message: { type: string }
                   docs: { type: string }
+                  auth: { type: string }
+                  users: { type: string }
+                  sinisters: { type: string }
+                  documents: { type: string }
+                  folders: { type: string }
 
   /api/users:
     get:
@@ -356,6 +367,486 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /api/sinisters:
+    get:
+      tags: [Sinistres]
+      summary: Lister les sinistres
+      description: |
+        Rôles autorisés : ADMIN, PORTFOLIO_MANAGER, TRACKING_OFFICER, CUSTOMER_OFFICER.
+        Filtre `status` : `pending_validation`, `validated`, ou statut dossier (`INITIALIZED`, … `CLOSED`).
+      security:
+        - bearerAuth: []
+      operationId: listSinisters
+      parameters:
+        - name: vehicle_plate
+          in: query
+          description: Filtre partiel sur l’immatriculation
+          schema: { type: string, maxLength: 50 }
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/SinisterListStatusFilter'
+        - name: call_datetime_from
+          in: query
+          schema: { type: string, format: date-time }
+        - name: call_datetime_to
+          in: query
+          schema: { type: string, format: date-time }
+        - name: incident_datetime_from
+          in: query
+          schema: { type: string, format: date-time }
+        - name: incident_datetime_to
+          in: query
+          schema: { type: string, format: date-time }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - name: offset
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        '200':
+          description: Liste paginée ; chaque élément inclut un champ calculé `status`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SinisterListResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      tags: [Sinistres]
+      summary: Créer un sinistre
+      description: |
+        Rôles : CUSTOMER_OFFICER, PORTFOLIO_MANAGER, ADMIN.
+        Les IDs de pièces (`cni_driver`, etc.) doivent référencer des documents du type attendu (CNI → ID_CARD, …).
+      security:
+        - bearerAuth: []
+      operationId: createSinister
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SinisterCreate'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SinisterSingleResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/sinisters/{id}:
+    get:
+      tags: [Sinistres]
+      summary: Détail d’un sinistre
+      security:
+        - bearerAuth: []
+      operationId: getSinisterById
+      parameters:
+        - $ref: '#/components/parameters/SinisterId'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SinisterSingleResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    put:
+      tags: [Sinistres]
+      summary: Mettre à jour un sinistre
+      description: Interdit si le sinistre a déjà été validé par un gestionnaire (`422`).
+      security:
+        - bearerAuth: []
+      operationId: updateSinister
+      parameters:
+        - $ref: '#/components/parameters/SinisterId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SinisterUpdate'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SinisterSingleResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/sinisters/{id}/validate:
+    patch:
+      tags: [Sinistres]
+      summary: Valider le sinistre (gestionnaire / admin)
+      description: |
+        Rôles : PORTFOLIO_MANAGER, ADMIN.
+        Si le dossier est complet (3 pièces liées, toutes validées, champs obligatoires renseignés),
+        crée automatiquement une ligne `sinister_folders` avec statut `INITIALIZED`.
+      security:
+        - bearerAuth: []
+      operationId: validateSinister
+      parameters:
+        - $ref: '#/components/parameters/SinisterId'
+      responses:
+        '200':
+          description: Corps inclut `message`, `data`, `meta` (création dossier, complétude)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SinisterValidateResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/documents:
+    post:
+      tags: [Documents]
+      summary: Uploader un document
+      description: |
+        Rôles : ADMIN, PORTFOLIO_MANAGER, CUSTOMER_OFFICER, TRACKING_OFFICER.
+        Corps `multipart/form-data` : champ fichier `file`, champ texte `type` (enum).
+        Taille max configurable (`UPLOAD_MAX_BYTES`, défaut 15 Mo). Types MIME autorisés : PDF, PNG, JPEG, GIF, WebP, texte brut.
+      security:
+        - bearerAuth: []
+      operationId: uploadDocument
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, type]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Fichier à stocker
+                type:
+                  $ref: '#/components/schemas/DocumentType'
+      responses:
+        '201':
+          description: Identifiant et URL d’accès au document
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentUploadResponse'
+        '400':
+          description: Fichier manquant, type non autorisé ou trop volumineux
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/documents/{id}:
+    get:
+      tags: [Documents]
+      summary: Consulter ou télécharger un document
+      description: |
+        Rôles : ADMIN, PORTFOLIO_MANAGER, TRACKING_OFFICER, CUSTOMER_OFFICER.
+        Par défaut : flux binaire du fichier (`Content-Disposition` inline).
+        `?meta=1` : réponse JSON (métadonnées + `storage_url`).
+        `?disposition=attachment` : pièce jointe.
+      security:
+        - bearerAuth: []
+      operationId: getDocumentById
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+        - name: meta
+          in: query
+          description: Si `1` ou `true`, retourne du JSON au lieu du fichier
+          schema: { type: string, enum: ['1', 'true'] }
+        - name: disposition
+          in: query
+          schema: { type: string, enum: [inline, attachment] }
+      responses:
+        '200':
+          description: Fichier binaire ou métadonnées JSON
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/DocumentMeta'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/documents/{id}/validate:
+    patch:
+      tags: [Documents]
+      summary: Valider un document (gestionnaire / admin)
+      description: |
+        Rôles : PORTFOLIO_MANAGER, ADMIN. Passe `is_validated` à `true`.
+      security:
+        - bearerAuth: []
+      operationId: validateDocument
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentValidateResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/folders:
+    get:
+      tags: [Dossiers]
+      summary: Lister les dossiers de prise en charge
+      description: |
+        Rôles : ADMIN, PORTFOLIO_MANAGER, TRACKING_OFFICER, CUSTOMER_OFFICER.
+      security:
+        - bearerAuth: []
+      operationId: listFolders
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/FolderStatus'
+        - name: scenario
+          in: query
+          schema:
+            $ref: '#/components/schemas/FolderScenario'
+        - name: assigned_officer_id
+          in: query
+          schema: { type: integer, minimum: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - name: offset
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FolderListResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      tags: [Dossiers]
+      summary: Créer manuellement un dossier pour un sinistre
+      description: |
+        Rôles : ADMIN, PORTFOLIO_MANAGER, CUSTOMER_OFFICER.
+        Le sinistre doit être validé par un gestionnaire. Si le dossier est incomplet (pièces),
+        les rôles gestionnaire/admin peuvent passer `force: true`.
+        Retourne 409 si un dossier existe déjà pour ce sinistre.
+      security:
+        - bearerAuth: []
+      operationId: createFolder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FolderCreate'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FolderSingleResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/folders/{id}:
+    get:
+      tags: [Dossiers]
+      summary: Détail dossier (sinistre lié + étapes)
+      security:
+        - bearerAuth: []
+      operationId: getFolderById
+      parameters:
+        - $ref: '#/components/parameters/FolderId'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FolderSingleResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/folders/{id}/assign:
+    patch:
+      tags: [Dossiers]
+      summary: Assigner un chargé de suivi
+      description: |
+        Rôles : ADMIN, PORTFOLIO_MANAGER.
+        L’utilisateur assigné doit être actif et de rôle TRACKING_OFFICER ou ADMIN.
+      security:
+        - bearerAuth: []
+      operationId: assignFolderOfficer
+      parameters:
+        - $ref: '#/components/parameters/FolderId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FolderAssign'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FolderSingleResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/folders/{id}/close:
+    patch:
+      tags: [Dossiers]
+      summary: Clôturer le dossier
+      description: |
+        Rôles : ADMIN, PORTFOLIO_MANAGER.
+        Met `is_closed` à true et `status` à CLOSED.
+      security:
+        - bearerAuth: []
+      operationId: closeFolder
+      parameters:
+        - $ref: '#/components/parameters/FolderId'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FolderCloseResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
 components:
   securitySchemes:
     bearerAuth:
@@ -365,6 +856,30 @@ components:
 
   parameters:
     UserId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+
+    SinisterId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+
+    DocumentId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+
+    FolderId:
       name: id
       in: path
       required: true
@@ -495,6 +1010,308 @@ components:
           type: array
           items: { type: string }
 
+    DocumentType:
+      type: string
+      enum:
+        - ID_CARD
+        - REGISTRATION_CARD
+        - INSURANCE_CERT
+        - EXPERT_REPORT
+        - INVOICE
+        - RIB
+        - SIGNATURE
+
+    Document:
+      type: object
+      properties:
+        id: { type: integer }
+        type:
+          $ref: '#/components/schemas/DocumentType'
+        storage_url: { type: string, nullable: true, description: Chemin relatif côté serveur }
+        is_validated: { type: boolean }
+        uploaded_at: { type: string, format: date-time, nullable: true }
+
+    DocumentMeta:
+      type: object
+      properties:
+        id: { type: integer }
+        type:
+          $ref: '#/components/schemas/DocumentType'
+        is_validated: { type: boolean }
+        uploaded_at: { type: string, format: date-time, nullable: true }
+        storage_url:
+          type: string
+          description: URL publique (GET ce même document)
+
+    DocumentUploadResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          required: [id, storage_url]
+          properties:
+            id: { type: integer }
+            type:
+              $ref: '#/components/schemas/DocumentType'
+            storage_url:
+              type: string
+              description: URL pour télécharger le document (GET /api/documents/{id})
+
+    DocumentValidateResponse:
+      type: object
+      properties:
+        message: { type: string }
+        data:
+          $ref: '#/components/schemas/Document'
+
+    FolderStatus:
+      type: string
+      enum:
+        - INITIALIZED
+        - EXPERTISE_PENDING
+        - REPAIR_PLANNED
+        - COMPENSATION_PENDING
+        - CLOSED
+
+    FolderScenario:
+      type: string
+      enum: [REPAIRABLE, TOTAL_LOSS]
+
+    SinisterListStatusFilter:
+      type: string
+      description: |
+        `pending_validation` ou `validated`, ou un statut de dossier (`INITIALIZED`, …).
+      enum:
+        - pending_validation
+        - validated
+        - INITIALIZED
+        - EXPERTISE_PENDING
+        - REPAIR_PLANNED
+        - COMPENSATION_PENDING
+        - CLOSED
+
+    SinisterFolderSummary:
+      type: object
+      nullable: true
+      properties:
+        id: { type: integer }
+        folder_reference: { type: string, nullable: true }
+        status:
+          $ref: '#/components/schemas/FolderStatus'
+        scenario:
+          $ref: '#/components/schemas/FolderScenario'
+        is_closed: { type: boolean }
+        created_at: { type: string, format: date-time, nullable: true }
+
+    SinisterFolderDetail:
+      allOf:
+        - $ref: '#/components/schemas/SinisterFolderSummary'
+        - type: object
+          properties:
+            updated_at: { type: string, format: date-time, nullable: true }
+            assigned_officer_id: { type: integer, nullable: true }
+            assignedOfficer:
+              $ref: '#/components/schemas/User'
+              nullable: true
+              description: Présent si chargé avec l’association
+
+    Sinister:
+      type: object
+      properties:
+        id: { type: integer }
+        vehicle_plate: { type: string }
+        driver_first_name: { type: string, nullable: true }
+        driver_last_name: { type: string, nullable: true }
+        is_driver_insured: { type: boolean }
+        call_datetime: { type: string, format: date-time }
+        incident_datetime: { type: string, format: date-time }
+        description: { type: string, nullable: true }
+        driver_responsability: { type: boolean }
+        driver_engaged_responsibility: { type: integer, nullable: true, enum: [0, 50, 100] }
+        cni_driver: { type: integer, nullable: true }
+        vehicle_registration_doc_id: { type: integer, nullable: true }
+        insurance_certificate_id: { type: integer, nullable: true }
+        is_validated_by_manager: { type: boolean }
+        created_by_id: { type: integer, nullable: true }
+        created_at: { type: string, format: date-time, nullable: true }
+        status:
+          type: string
+          description: |
+            Calculé : `pending_validation`, `validated`, ou `FOLDER_<statut dossier>` si un dossier existe.
+        folder:
+          $ref: '#/components/schemas/SinisterFolderSummary'
+
+    SinisterDetail:
+      allOf:
+        - $ref: '#/components/schemas/Sinister'
+        - type: object
+          properties:
+            creator:
+              $ref: '#/components/schemas/User'
+              nullable: true
+            cniDocument:
+              $ref: '#/components/schemas/Document'
+              nullable: true
+            registrationDocument:
+              $ref: '#/components/schemas/Document'
+              nullable: true
+            insuranceDocument:
+              $ref: '#/components/schemas/Document'
+              nullable: true
+            folder:
+              $ref: '#/components/schemas/SinisterFolderDetail'
+              nullable: true
+
+    SinisterCreate:
+      type: object
+      required: [vehicle_plate, call_datetime, incident_datetime]
+      properties:
+        vehicle_plate: { type: string, maxLength: 50 }
+        driver_first_name: { type: string, maxLength: 255 }
+        driver_last_name: { type: string, maxLength: 255 }
+        is_driver_insured: { type: boolean }
+        call_datetime: { type: string, format: date-time }
+        incident_datetime: { type: string, format: date-time }
+        description: { type: string }
+        driver_responsability: { type: boolean }
+        driver_engaged_responsibility: { type: integer, enum: [0, 50, 100] }
+        cni_driver: { type: integer, minimum: 1, description: ID document type ID_CARD }
+        vehicle_registration_doc_id:
+          { type: integer, minimum: 1, description: ID document type REGISTRATION_CARD }
+        insurance_certificate_id:
+          { type: integer, minimum: 1, description: ID document type INSURANCE_CERT }
+
+    SinisterUpdate:
+      type: object
+      minProperties: 1
+      properties:
+        vehicle_plate: { type: string, maxLength: 50 }
+        driver_first_name: { type: string, maxLength: 255 }
+        driver_last_name: { type: string, maxLength: 255 }
+        is_driver_insured: { type: boolean }
+        call_datetime: { type: string, format: date-time }
+        incident_datetime: { type: string, format: date-time }
+        description: { type: string }
+        driver_responsability: { type: boolean }
+        driver_engaged_responsibility: { type: integer, enum: [0, 50, 100] }
+        cni_driver: { type: integer, minimum: 1 }
+        vehicle_registration_doc_id: { type: integer, minimum: 1 }
+        insurance_certificate_id: { type: integer, minimum: 1 }
+
+    SinisterListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Sinister'
+        meta:
+          $ref: '#/components/schemas/ListMeta'
+
+    SinisterSingleResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/SinisterDetail'
+
+    SinisterValidateMeta:
+      type: object
+      properties:
+        folder_created: { type: boolean, description: Dossier sinister_folders créé lors de cet appel }
+        folder_id: { type: integer, nullable: true }
+        dossier_complet: { type: boolean, description: Sinistre prêt pour génération dossier }
+
+    SinisterValidateResponse:
+      type: object
+      properties:
+        message: { type: string }
+        data:
+          $ref: '#/components/schemas/SinisterDetail'
+        meta:
+          $ref: '#/components/schemas/SinisterValidateMeta'
+
+    FolderStep:
+      type: object
+      properties:
+        id: { type: integer }
+        folder_id: { type: integer }
+        step_type: { type: string, nullable: true }
+        value: { type: string, nullable: true }
+        action_date: { type: string, format: date-time }
+        document_id: { type: integer, nullable: true }
+        performed_by_id: { type: integer, nullable: true }
+        document:
+          $ref: '#/components/schemas/Document'
+          nullable: true
+        performedBy:
+          $ref: '#/components/schemas/User'
+          nullable: true
+
+    ClaimFolder:
+      type: object
+      description: Dossier (table sinister_folders)
+      properties:
+        id: { type: integer }
+        sinister_id: { type: integer }
+        folder_reference: { type: string, nullable: true }
+        status:
+          $ref: '#/components/schemas/FolderStatus'
+        scenario:
+          $ref: '#/components/schemas/FolderScenario'
+          nullable: true
+        is_closed: { type: boolean }
+        assigned_officer_id: { type: integer, nullable: true }
+        created_at: { type: string, format: date-time, nullable: true }
+        updated_at: { type: string, format: date-time, nullable: true }
+        sinister:
+          $ref: '#/components/schemas/Sinister'
+          nullable: true
+        assignedOfficer:
+          $ref: '#/components/schemas/User'
+          nullable: true
+        steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/FolderStep'
+
+    FolderCreate:
+      type: object
+      required: [sinister_id]
+      properties:
+        sinister_id: { type: integer, minimum: 1 }
+        force:
+          type: boolean
+          description: ADMIN / PORTFOLIO_MANAGER uniquement — crée le dossier sans exiger la complétude des pièces
+
+    FolderAssign:
+      type: object
+      required: [assigned_officer_id]
+      properties:
+        assigned_officer_id: { type: integer, minimum: 1 }
+
+    FolderListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClaimFolder'
+        meta:
+          $ref: '#/components/schemas/ListMeta'
+
+    FolderSingleResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/ClaimFolder'
+
+    FolderCloseResponse:
+      type: object
+      properties:
+        message: { type: string }
+        data:
+          $ref: '#/components/schemas/ClaimFolder'
+
   responses:
     ValidationError:
       description: Paramètres ou corps invalides
@@ -526,6 +1343,13 @@ components:
 
     Forbidden:
       description: Droits insuffisants
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorMessage'
+
+    UnprocessableEntity:
+      description: Règle métier (ex. sinistre déjà validé, mise à jour interdite)
       content:
         application/json:
           schema:
