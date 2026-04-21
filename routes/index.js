@@ -3,6 +3,7 @@ const authRoutes = require('./auth')
 const sinisterRoutes = require('./sinisters')
 const documentRoutes = require('./documents')
 const folderRoutes = require('./folders')
+const historyRoutes = require('./history')
 const logger = require('../core/logger')
 
 function initRoutes (app) {
@@ -11,6 +12,7 @@ function initRoutes (app) {
   app.use('/api/sinisters', sinisterRoutes)
   app.use('/api/documents', documentRoutes)
   app.use('/api/folders', folderRoutes)
+  app.use('/api/history', historyRoutes)
 
   app.get('/', (req, res, next) => {
     logger.debug('GET /')
@@ -23,7 +25,8 @@ function initRoutes (app) {
       users: '/api/users',
       sinisters: '/api/sinisters',
       documents: '/api/documents',
-      folders: '/api/folders'
+      folders: '/api/folders',
+      history: '/api/history'
     })
   })
 }

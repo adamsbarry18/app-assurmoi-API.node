@@ -10,7 +10,12 @@ const USER_ROLES = Object.freeze([
 
 const User = (sequelize, DataTypes) => {
   class User extends Model {
-    static associate () {}
+    static associate (models) {
+      User.hasMany(models.HistoryLog, {
+        foreignKey: 'user_id',
+        as: 'historyLogs'
+      })
+    }
   }
 
   User.init(

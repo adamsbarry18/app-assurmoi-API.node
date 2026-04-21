@@ -4,6 +4,7 @@ const { Document } = require('../models')
 const { logError } = require('../core/logError')
 const { ERROR_CODES, AppError } = require('../core/errors')
 const { ensureUploadRoot, absoluteFromRelative, guessContentType } = require('../utils/uploadPaths')
+const { recordHistory, HISTORY_ACTION } = require('./historyAudit')
 
 const ALLOWED_UPLOAD_MIMES = new Set([
   'application/pdf',
@@ -55,6 +56,13 @@ const uploadDocument = async (req, res) => {
     const doc = await createDocumentRecord({
       type,
       diskRelativePath: req.diskRelativePath
+    })
+
+    await recordHistory({
+      userId: req.user.id,
+      entityType: 'document',
+      entityId: doc.id,
+      action: HISTORY_ACTION.DOCUMENT_UPLOADED
     })
 
     return res.status(201).json({
@@ -149,6 +157,12 @@ const validateDocument = async (req, res) => {
     }
     await doc.update({ is_validated: true })
     const refreshed = await Document.findByPk(id)
+    await recordHistory({
+      userId: req.user.id,
+      entityType: 'document',
+      entityId: Number(id),
+      action: HISTORY_ACTION.DOCUMENT_VALIDATED
+    })
     return res.status(200).json({
       message: 'Document validé',
       data: refreshed

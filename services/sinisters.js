@@ -15,6 +15,7 @@ const {
   sinisterIsComplete,
   ensureFolderIfComplete
 } = require('./folderCore')
+const { recordHistory, HISTORY_ACTION } = require('./historyAudit')
 
 function parseListPagination (query) {
   const rawLimit = query.limit
@@ -222,6 +223,12 @@ const createSinister = async (req, res) => {
     const full = await Sinister.findByPk(created.id, {
       include: sinisterIncludeDetail
     })
+    await recordHistory({
+      userId: req.user.id,
+      entityType: 'sinister',
+      entityId: created.id,
+      action: HISTORY_ACTION.SINISTER_CREATED
+    })
     return res.status(201).json({ data: attachComputedStatus(full) })
   } catch (err) {
     await transaction.rollback()
@@ -317,6 +324,12 @@ const updateSinister = async (req, res) => {
     await transaction.commit()
 
     const full = await Sinister.findByPk(id, { include: sinisterIncludeDetail })
+    await recordHistory({
+      userId: req.user.id,
+      entityType: 'sinister',
+      entityId: Number(id),
+      action: HISTORY_ACTION.SINISTER_UPDATED
+    })
     return res.status(200).json({ data: attachComputedStatus(full) })
   } catch (err) {
     await transaction.rollback()
@@ -366,6 +379,20 @@ const validateSinisterByManager = async (req, res) => {
     await transaction.commit()
 
     const full = await Sinister.findByPk(id, { include: sinisterIncludeDetail })
+    await recordHistory({
+      userId: req.user.id,
+      entityType: 'sinister',
+      entityId: Number(id),
+      action: HISTORY_ACTION.SINISTER_VALIDATED
+    })
+    if (folder && created) {
+      await recordHistory({
+        userId: req.user.id,
+        entityType: 'folder',
+        entityId: folder.id,
+        action: HISTORY_ACTION.FOLDER_CREATED
+      })
+    }
     return res.status(200).json({
       message: complete
         ? created
