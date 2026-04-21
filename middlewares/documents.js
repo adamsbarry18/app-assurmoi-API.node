@@ -24,8 +24,22 @@ const documentIdValidators = [
   handleValidationErrors
 ]
 
+const signDocumentValidators = [
+  param('id').isInt({ min: 1 }).toInt(),
+  body('first_name').trim().notEmpty().isLength({ max: 255 }),
+  body('last_name').trim().notEmpty().isLength({ max: 255 }),
+  body('email').trim().isEmail().normalizeEmail(),
+  body('locale').optional().trim().isLength({ max: 8 }),
+  body('sign_page').optional().isInt({ min: 1 }).toInt(),
+  body('sign_x').optional().isInt({ min: 0 }).toInt(),
+  body('sign_y').optional().isInt({ min: 0 }).toInt(),
+  body('signature_request_name').optional().trim().isLength({ max: 255 }),
+  handleValidationErrors
+]
+
 module.exports = {
   uploadDocumentValidators,
   documentIdValidators,
+  signDocumentValidators,
   DOCUMENT_TYPES
 }

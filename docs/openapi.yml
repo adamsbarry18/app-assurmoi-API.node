@@ -678,6 +678,59 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /api/documents/{id}/sign:
+    post:
+      tags: [Documents]
+      summary: Lancer une demande de signature Yousign
+      description: |
+        Rôles : ADMIN, PORTFOLIO_MANAGER.
+
+        Le document doit exister, être **validé** en interne (`PATCH …/validate`) et le fichier doit être présent sur le serveur.
+        Formats acceptés pour l’envoi à Yousign : **PDF** ou **DOCX**.
+
+        Configurez `YOUSIGN_API_KEY` et éventuellement `YOUSIGN_BASE_URL` (sandbox vs production).
+        Voir [API Yousign](https://yousign.com/fr-fr/api).
+      security:
+        - bearerAuth: []
+      operationId: signDocumentYousign
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentSignRequest'
+      responses:
+        '200':
+          description: Demande Yousign créée et activée (lien de signature si renvoyé par l’API)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentSignResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: Document non validé ou format non signable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '502':
+          description: Erreur ou réponse invalide côté Yousign
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+
   /api/folders:
     get:
       tags: [Dossiers]
@@ -1251,6 +1304,63 @@ components:
         message: { type: string }
         data:
           $ref: '#/components/schemas/Document'
+
+    DocumentSignRequest:
+      type: object
+      required: [first_name, last_name, email]
+      properties:
+        first_name:
+          type: string
+          maxLength: 255
+        last_name:
+          type: string
+          maxLength: 255
+        email:
+          type: string
+          format: email
+        locale:
+          type: string
+          maxLength: 8
+          description: Code locale signataire (défaut `fr`)
+        sign_page:
+          type: integer
+          minimum: 1
+          description: Numéro de page du champ de signature (défaut 1)
+        sign_x:
+          type: integer
+          minimum: 0
+          description: Abscisse du champ (défaut côté serveur)
+        sign_y:
+          type: integer
+          minimum: 0
+          description: Ordonnée du champ (défaut côté serveur)
+        signature_request_name:
+          type: string
+          maxLength: 255
+          description: Libellé de la demande dans Yousign
+
+    DocumentSignResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          required:
+            - document_id
+            - signature_request_id
+            - yousign_document_id
+          properties:
+            document_id: { type: integer }
+            signature_request_id: { type: string }
+            yousign_document_id: { type: string }
+            status: { type: string, nullable: true }
+            signature_link:
+              type: string
+              nullable: true
+              description: Lien de signature du premier signataire si fourni par Yousign
+            signers:
+              type: array
+              items: { type: object, additionalProperties: true }
+              description: Liste des signataires telle que renvoyée par Yousign après activation
 
     FolderStatus:
       type: string
