@@ -8,12 +8,17 @@ const {
   assignOfficerValidators
 } = require('../middlewares/folders')
 const {
+  folderIdForStepsValidators,
+  createFolderStepValidators
+} = require('../middlewares/folderSteps')
+const {
   listFolders,
   getFolder,
   createFolder,
   assignOfficer,
   closeFolder
 } = require('../services/folders')
+const { listFolderSteps, createFolderStep, ROLES_STEP_WRITE } = require('../services/folderSteps')
 
 const ROLES_READ = [
   'ADMIN',
@@ -56,6 +61,22 @@ router.patch(
   requireRoles(...ROLES_MANAGE),
   folderIdParamValidator,
   closeFolder
+)
+
+router.get(
+  '/:id/steps',
+  authenticate,
+  requireRoles(...ROLES_READ),
+  folderIdForStepsValidators,
+  listFolderSteps
+)
+
+router.post(
+  '/:id/steps',
+  authenticate,
+  requireRoles(...ROLES_STEP_WRITE),
+  createFolderStepValidators,
+  createFolderStep
 )
 
 router.get(
