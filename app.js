@@ -44,6 +44,8 @@ app.use(errorHandler)
 // Démarrage du serveur
 app.listen(PORT, () => {
   logger.info('Serveur démarré', { port: PORT })
+  logger.info(`API disponible sur http://localhost:${PORT}/api`)
+  logger.info(`Documentation Swagger disponible sur http://localhost:${PORT}/api-docs`)
 })
 
 module.exports = app;
