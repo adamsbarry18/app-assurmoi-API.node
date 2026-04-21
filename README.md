@@ -1,85 +1,90 @@
-# App Assurmoi - API
+# App AssurMoi — API
 
 [![Repository](https://img.shields.io/badge/Repository-GitHub-blue)](https://github.com/adamsbarry18/app-assurmoi-API.node)
 
-Une API RESTful construite avec **Express.js** et **TypeScript**, conçue pour gérer les services de l'application Assurmoi. Ce projet utilise Docker pour la containerisation et intègre MariaDB pour la base de données et Mailhog pour les tests d'email.
+API REST **Node.js** ([Express 5](https://expressjs.com/)), **JavaScript** (CommonJS), avec **Sequelize** et **MariaDB**. Elle couvre l’espace AssurMoi : utilisateurs, authentification JWT, sinistres, dossiers, documents, historique d’audit, notifications, et **signature électronique** via [Yousign API v3](https://yousign.com/fr-fr/api).
+
+Le dépôt inclut **Docker Compose** (API, MariaDB, MailHog, Adminer) et la **documentation interactive** OpenAPI sous `/api-docs`.
 
 ---
 
 ## Prérequis
 
-Avant de commencer, assurez-vous d'avoir installé:
-
-- **Node.js** v20+ ([télécharger](https://nodejs.org/))
+- **Node.js** v20+ ([nodejs.org](https://nodejs.org/))
 - **npm** v10+
-- **Docker** v24+ ([télécharger](https://www.docker.com/))
-- **Docker Compose** v2+ (généralement fourni avec Docker Desktop)
+- **Docker** v24+ et **Docker Compose** v2+ ([docker.com](https://www.docker.com/)) — recommandé pour l’environnement complet
 
 ---
 
 ## Installation
 
-### 1️⃣ Cloner le repository
+### Cloner le dépôt
 
 ```bash
 git clone https://github.com/adamsbarry18/app-assurmoi-API.node.git
 cd app-assurmoi-API
 ```
 
-### 2️⃣ Installer les dépendances
+### Dépendances
 
 ```bash
 npm install
 ```
 
-### 3️⃣ Configuration environnement (optionnel)
+### Variables d’environnement
 
-Créer un fichier `.env` à la racine du projet:
+Copier `.env.example` vers `.env` et renseigner les valeurs (JWT, base de données, email, Yousign si besoin).
+
+**Exemple pour Docker Compose** (hôte des services = nom du service DB) :
 
 ```env
 PORT=3000
 NODE_ENV=development
-DATABASE_URL=mysql://root:root@db:3306/assurmoidb
-SMTP_HOST=mailhog
+JWT_SECRET=change_me_min_16_chars_secret
+
+DB_USERNAME=root
+DB_PASSWORD=root
+DB_HOST=app-assurmoi-db
+DB_PORT=3306
+DB_NAME=assurmoidb
+
+MAIL_BACKEND=console
+SMTP_HOST=app-assurmoi-mailhog
 SMTP_PORT=1025
+MAIL_FROM=noreply@assurmoi.local
+
+# Signature — sandbox : https://api-sandbox.yousign.app/v3
+YOUSIGN_API_KEY=
+# YOUSIGN_BASE_URL=https://api-sandbox.yousign.app/v3
 ```
+
+Puis exécuter les migrations (voir plus bas).
 
 ---
 
 ## Usage
 
-### 🚀 Avec Docker (Recommandé)
-
-Lancer tous les services (API, Base de données, Mailhog):
+### Avec Docker (recommandé)
 
 ```bash
-docker-compose up --build
-
-ou
-docker-compose up -d --build # pour lancer en arrière-plan
-
-# lancer uniquement l'API
-docker-compose up --build app-assurmoi-node
-
+docker compose up --build
 ```
 
-L'API sera accessible à `http://localhost:3000`
+En arrière-plan :
 
-### 💻 Sans Docker (Développement local)
+```bash
+docker compose up -d --build
+```
 
-**Mode développement**:
+L’API écoute sur **http://localhost:3000** (sauf `PORT` modifié).
+
+### Sans Docker
 
 ```bash
 npm run dev
 ```
 
-**Build** du projet:
-
-```bash
-npm run build
-```
-
-**Production** (après build):
+Production (sans recompilation : projet interprété directement) :
 
 ```bash
 npm start
@@ -87,120 +92,124 @@ npm start
 
 ---
 
-## Configuration
+## Documentation API (Swagger UI)
 
-### Services dans Docker Compose
+Une fois le serveur démarré :
 
-| Service | Description | Port(s) | Variable |
-|---------|-------------|---------|----------|
-| **app-assurmoi-node** | API Express/TypeScript | 3000 | NODE_ENV=development |
-| **app-assurmoi-db** | MariaDB Database | 3306 | MARIADB_ROOT_PASSWORD=root |
-| **app-assurmoi-mailhog** | SMTP Test Server | 1025, 8025 | - |
-| **app-assurmoi-adminer** | DB Client Web UI | 8080 | - |
+- **Swagger UI** : [http://localhost:3000/api-docs](http://localhost:3000/api-docs)
+- Spécification source : [`docs/openapi.yml`](docs/openapi.yml)
 
-### Variables d'environnement principales
-
-```env
-PORT=3000                              # Port du serveur Express
-NODE_ENV=development|production        # Environnement d'exécution
-MARIADB_ROOT_PASSWORD=root            # Mot de passe root MariaDB
-MARIADB_DATABASE=assurmoidb           # Nom de la base de données
-```
-
-# Migrations et Seeders (avec Sequelize CLI)
-### Installer Sequelize CLI globalement
-
-```bash
-npm install -g sequelize-cli
-```
-### Créer une migration
-
-```bash
-npx migration:generate --name create-users-table
-```
-### Exécuter les migrations
-
-```bash
-npx db:migrate
-```
-### Créer un seeder
-```bash
-npx seeder:generate --name demo-user
-```
-### Exécuter les seeders
-```bash
-npx db:seed:all
-```
-### Accès aux services
-
-- **API**: http://localhost:3000
-- **Adminer (DB UI)**: http://localhost:8080
-- **Mailhog Web UI**: http://localhost:8025
-- **Mailhog SMTP**: localhost:1025
+La racine `GET /` renvoie les liens utiles vers les préfixes `/api/*`.
 
 ---
 
-## Arborescence du projet
+## Fonctionnalités principales
+
+| Domaine | Préfixe | Rôles (aperçu) |
+|--------|---------|----------------|
+| Authentification (login, refresh, reset, invitation) | `/api/auth` | selon flux |
+| Utilisateurs | `/api/users` | selon endpoint |
+| Sinistres | `/api/sinisters` | gestionnaires, suivi, etc. |
+| Documents (upload, consultation, validation) | `/api/documents` | lecture / upload / validation selon rôle |
+| **Signature Yousign** | `POST /api/documents/:id/sign` | **ADMIN**, **PORTFOLIO_MANAGER** — document **validé**, fichier **PDF ou DOCX** |
+| Dossiers & étapes | `/api/folders` | workflow dossier |
+| Historique (audit) | `/api/history` | traçabilité des actions |
+| Notifications | `/api/notifications` | notifications applicatives |
+
+Flux typique **signature** : `POST /api/documents` (multipart) → `PATCH /api/documents/{id}/validate` → `POST /api/documents/{id}/sign` avec un corps JSON (`first_name`, `last_name`, `email`, champs optionnels de placement / nom de demande). La réponse inclut notamment `signature_request_id` et `signature_link` lorsque Yousign les fournit.
+
+---
+
+## Base de données (Sequelize)
+
+Scripts npm :
+
+```bash
+npm run db:migrate        # appliquer les migrations
+npm run db:migrate:undo   # annuler la dernière migration
+npm run db:seed           # exécuter les seeders
+```
+
+Création d’une nouvelle migration (avec `sequelize-cli` en devDependency) :
+
+```bash
+npx sequelize-cli migration:generate --name ma-migration
+```
+
+---
+
+## Services Docker Compose
+
+| Service | Rôle | Ports |
+|--------|------|-------|
+| `app-assurmoi-node` | API Express | **3000** → 3000 |
+| `app-assurmoi-db` | MariaDB | **3306** → 3306 |
+| `app-assurmoi-mailhog` | SMTP de test + UI | **1025** (SMTP), **8025** (UI) |
+| `app-assurmoi-adminer` | Client SQL web | **8080** → 8080 |
+
+Accès rapides :
+
+- API : http://localhost:3000  
+- Adminer : http://localhost:8080  
+- MailHog : http://localhost:8025  
+
+---
+
+## Arborescence (aperçu)
 
 ```
 app-assurmoi-API/
-│
-├── src/
-│   └── app.ts                 # Point d'entrée de l'application
-│├── middlewares/                       # Fichiers compilés (généré après build)
-│   └── users.ts
-├── dist/                       # Fichiers compilés (généré après build)
-│   └── app.ts
-├── models/                       # Fichiers compilés (généré après build)
-│   └── index.ts
-│   └── user.ts
-├── services/                       # Fichiers compilés (généré après build)
-│   └── users.ts
-├── node_modules/              # Dépendances npm (généré)
-│
-├── docker-compose.yml         # Configuration des services Docker
-│
-├── Dockerfile                 # Image Docker de l'application
-│
-├── package.json              # Dépendances et scripts npm
-│
-├── package-lock.json         # Verrouillage des versions npm
-│
-├── tsconfig.json             # Configuration TypeScript
-│
-├── README.md                 # Ce fichier
-│
-└── .env                      # Variables d'environnement (à créer)
+├── app.js                 # Point d’entrée Express
+├── config/                # Sequelize, OpenAPI
+├── core/                  # logger, erreurs
+├── routes/                # Routeurs par domaine (+ swagger)
+├── middlewares/           # auth, validation, upload, etc.
+├── services/              # Logique métier (dont yousignClient.js)
+├── models/                # Modèles Sequelize
+├── migrations/
+├── seeders/
+├── utils/                 # mailer, chemins upload
+├── docs/
+│   └── openapi.yml
+├── docker-compose.yml
+├── Dockerfile
+├── package.json
+└── .env.example
 ```
 
-### Description des fichiers clés
-
-| Fichier | Description |
-|---------|-------------|
-| `src/app.ts` | Entrée principale de l'API Express avec configuration de base |
-| `Dockerfile` | Configuration pour construire l'image Docker (Node 24 Alpine) |
-| `docker-compose.yml` | Orchestration des 4 services (API, DB, Mailhog, Adminer) |
-| `package.json` | Dépendances et scripts npm |
-| `tsconfig.json` | Configuration du compilateur TypeScript |
+Les fichiers uploadés sont stockés sous **`UPLOAD_DIR`** (défaut : `./uploads`).
 
 ---
 
-## Auteur
+## Variables d’environnement (référence)
 
-👤 **Mamadou Barry**
-- 📧 Email: [mabarry2018@gmail.com](mailto:mabarry2018@gmail.com)
-- 🐙 GitHub: [@adamsbarry18](https://github.com/adamsbarry18)
+Liste détaillée et commentaires : **`.env.example`**. Notamment :
+
+- **JWT** : `JWT_SECRET` (minimum 16 caractères), durées d’expiration, `PUBLIC_APP_URL` pour les liens dans les e-mails.
+- **Base** : `DB_USERNAME`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`, `DB_NAME`.
+- **Fichiers** : `UPLOAD_DIR`, `UPLOAD_MAX_BYTES`.
+- **E-mail** : `MAIL_BACKEND` (`console` ou SMTP), `SMTP_*`, `MAIL_FROM`.
+- **Yousign** : `YOUSIGN_API_KEY`, `YOUSIGN_BASE_URL` (sandbox vs production).
 
 ---
 
 ## Ressources utiles
 
-- [Express.js Documentation](https://expressjs.com/)
-- [TypeScript Handbook](https://www.typescriptlang.org/docs/)
-- [Docker Documentation](https://docs.docker.com/)
-- [MariaDB Documentation](https://mariadb.com/docs/)
-- [Mailhog Documentation](https://github.com/mailhog/MailHog)
+- [Express](https://expressjs.com/)
+- [Sequelize](https://sequelize.org/)
+- [Yousign — API](https://yousign.com/fr-fr/api) · [Developer Center](https://developers.yousign.com/)
+- [Docker Compose](https://docs.docker.com/compose/)
+- [MariaDB](https://mariadb.com/docs/)
+- [MailHog](https://github.com/mailhog/MailHog)
 
 ---
 
-**Licence**: ISC
+## Auteur
+
+**Mamadou Barry**  
+- Email : [mabarry2018@gmail.com](mailto:mabarry2018@gmail.com)  
+- GitHub : [@adamsbarry18](https://github.com/adamsbarry18)
+
+---
+
+**Licence** : ISC
