@@ -11,9 +11,6 @@ services:
     depends_on:
        - 'app-assurmoi-db'
        - 'app-assurmoi-mailhog'
-    links:
-       - 'app-assurmoi-db:db'
-       - 'app-assurmoi-mailhog:mailhog'
     environment:
       - NODE_ENV=development
     volumes:

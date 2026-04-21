@@ -11,7 +11,7 @@ const {
   verifyInviteToken,
   accessExpiresInSeconds
 } = require('../config/authTokens')
-const { sendMail } = require('./mail')
+const { mailLogin, mailForgotPassword, mailInvitation } = require('../utils/mailer')
 const { sanitizeUser, hashPassword } = require('./users')
 const { logError } = require('../core/logError')
 const { ERROR_CODES } = require('../core/errors')
@@ -41,6 +41,8 @@ const login = async (req, res) => {
     const refreshToken = signRefreshToken(user)
     await user.update({ refresh_token: refreshToken })
     const plain = sanitizeUser(await User.findByPk(user.id))
+    const mailStatus = await mailLogin(user)
+    if (mailStatus !== true) console.log('Notification email non envoyée')
     return res.status(200).json({
       accessToken,
       refreshToken,
@@ -149,14 +151,9 @@ const forgotPassword = async (req, res) => {
       )
       const link = `${base}/reset-password?token=${encodeURIComponent(token)}`
       try {
-        await sendMail({
-          to: email,
-          subject: 'AssurMoi — réinitialisation du mot de passe',
-          text: `Bonjour,\n\nPour réinitialiser votre mot de passe : ${link}\n\nCe lien expire sous peu.`,
-          html: `<p>Bonjour,</p><p><a href="${link}">Réinitialiser mon mot de passe</a></p>`
-        })
+        await mailForgotPassword(user, link)
       } catch {
-        // Ne pas exposer l’échec d’envoi (énumération d’emails)
+        console.log('Notification email non envoyée')
       }
     }
     return res.status(200).json({
@@ -223,12 +220,7 @@ const sendInvitation = async (req, res) => {
       ''
     )
     const link = `${base}/register?token=${encodeURIComponent(inviteToken)}`
-    await sendMail({
-      to: email,
-      subject: 'AssurMoi — invitation',
-      text: `Vous êtes invité avec le rôle ${role}. Créez votre compte : ${link}`,
-      html: `<p>Vous êtes invité (<strong>${role}</strong>).</p><p><a href="${link}">Créer mon compte</a></p>`
-    })
+    await mailInvitation({ email, role, link })
     return res.status(200).json({ message: 'Invitation envoyée' })
   } catch (err) {
     return logError(res, err, {
