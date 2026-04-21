@@ -28,6 +28,7 @@ const HISTORY_ACTION = Object.freeze({
   SINISTER_VALIDATED: 'sinister.validated',
   DOCUMENT_UPLOADED: 'document.uploaded',
   DOCUMENT_VALIDATED: 'document.validated',
+  DOCUMENT_SIGNATURE_REQUESTED: 'document.signature_requested',
   FOLDER_CREATED: 'folder.created',
   FOLDER_ASSIGNED: 'folder.assigned',
   FOLDER_CLOSED: 'folder.closed',

@@ -4,12 +4,14 @@ const { authenticate, requireRoles } = require('../middlewares/auth')
 const { uploadDocumentFile } = require('../middlewares/documentUpload')
 const {
   uploadDocumentValidators,
-  documentIdValidators
+  documentIdValidators,
+  signDocumentValidators
 } = require('../middlewares/documents')
 const {
   uploadDocument,
   getDocumentFile,
-  validateDocument
+  validateDocument,
+  signDocument
 } = require('../services/documents')
 
 const ROLES_READ = [
@@ -28,6 +30,8 @@ const ROLES_UPLOAD = [
 
 const ROLES_VALIDATE = ['ADMIN', 'PORTFOLIO_MANAGER']
 
+const ROLES_SIGN = ['ADMIN', 'PORTFOLIO_MANAGER']
+
 router.patch(
   '/:id/validate',
   authenticate,
@@ -42,6 +46,14 @@ router.get(
   requireRoles(...ROLES_READ),
   documentIdValidators,
   getDocumentFile
+)
+
+router.post(
+  '/:id/sign',
+  authenticate,
+  requireRoles(...ROLES_SIGN),
+  signDocumentValidators,
+  signDocument
 )
 
 router.post(
