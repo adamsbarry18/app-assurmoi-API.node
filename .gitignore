@@ -30,6 +30,9 @@ Thumbs.db
 *.sublime-project
 *.sublime-workspace
 
+# --- Fichiers uploadés ---
+uploads/
+
 # --- Divers ---
 db-data/
 .npm

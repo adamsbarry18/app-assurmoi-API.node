@@ -1,4 +1,5 @@
 const logger = require('../core/logger')
+const multer = require('multer')
 const { AppError, ERROR_CODES } = require('../core/errors')
 
 function notFoundHandler (req, res) {
@@ -15,6 +16,18 @@ function errorHandler (err, req, res, next) {
   }
 
   logger.error('middleware.errorHandler', err, { path: req.path })
+
+  if (err instanceof multer.MulterError) {
+    const message =
+      err.code === 'LIMIT_FILE_SIZE'
+        ? 'Fichier trop volumineux'
+        : 'Erreur lors de l’upload'
+    res.status(ERROR_CODES.BAD_REQUEST.status).json({
+      message,
+      code: ERROR_CODES.BAD_REQUEST.code
+    })
+    return
+  }
 
   if (err instanceof AppError) {
     res.status(err.statusCode).json({ message: err.message, code: err.code })

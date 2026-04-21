@@ -1,10 +1,16 @@
 const userRoutes = require('./users')
 const authRoutes = require('./auth')
+const sinisterRoutes = require('./sinisters')
+const documentRoutes = require('./documents')
+const folderRoutes = require('./folders')
 const logger = require('../core/logger')
 
 function initRoutes (app) {
   app.use('/api/auth', authRoutes)
   app.use('/api/users', userRoutes)
+  app.use('/api/sinisters', sinisterRoutes)
+  app.use('/api/documents', documentRoutes)
+  app.use('/api/folders', folderRoutes)
 
   app.get('/', (req, res, next) => {
     logger.debug('GET /')
@@ -14,7 +20,10 @@ function initRoutes (app) {
       message: "Bienvenue sur l'API AssurMoi",
       docs: '/api-docs',
       auth: '/api/auth',
-      users: '/api/users'
+      users: '/api/users',
+      sinisters: '/api/sinisters',
+      documents: '/api/documents',
+      folders: '/api/folders'
     })
   })
 }
