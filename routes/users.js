@@ -16,7 +16,13 @@ const {
   deleteUser
 } = require('../services/users')
 
-router.get('/', authenticate, listUsersQueryValidators, getAllUsers)
+router.get(
+  '/',
+  authenticate,
+  requireRoles('ADMIN'),
+  listUsersQueryValidators,
+  getAllUsers
+)
 router.post(
   '/',
   authenticate,

@@ -73,6 +73,13 @@ const getAllUsers = async (req, res) => {
 const getUser = async (req, res) => {
   try {
     const id = req.params.id
+    const isAdmin = req.user.role === 'ADMIN'
+    if (!isAdmin && Number(req.user.id) !== Number(id)) {
+      return res.status(ERROR_CODES.FORBIDDEN.status).json({
+        message: 'Vous ne pouvez consulter que votre propre profil',
+        code: ERROR_CODES.FORBIDDEN.code
+      })
+    }
     const user = await User.findByPk(id)
     if (!user) {
       return res.status(ERROR_CODES.NOT_FOUND.status).json({
@@ -161,6 +168,16 @@ const updateUser = async (req, res) => {
       })
     }
 
+    const isAdmin = req.user.role === 'ADMIN'
+    const isSelf = Number(req.user.id) === Number(userId)
+    if (!isAdmin && !isSelf) {
+      await transaction.rollback()
+      return res.status(ERROR_CODES.FORBIDDEN.status).json({
+        message: 'Mise à jour non autorisée',
+        code: ERROR_CODES.FORBIDDEN.code
+      })
+    }
+
     const {
       username,
       first_name: firstName,
@@ -170,6 +187,22 @@ const updateUser = async (req, res) => {
       role,
       is_active: isActive
     } = req.body
+
+    if (!isAdmin) {
+      if (
+        username !== undefined ||
+        email !== undefined ||
+        role !== undefined ||
+        isActive !== undefined
+      ) {
+        await transaction.rollback()
+        return res.status(ERROR_CODES.FORBIDDEN.status).json({
+          message:
+            'Vous ne pouvez modifier que votre prénom, nom et mot de passe',
+          code: ERROR_CODES.FORBIDDEN.code
+        })
+      }
+    }
 
     const updates = {}
     if (username !== undefined) updates.username = username

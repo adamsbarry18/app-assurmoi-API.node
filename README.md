@@ -111,7 +111,13 @@ npm install
 npm start
 ```
 
-Côté app, copier `APP-ASSURMOI-MOBILE/.env.example` vers `.env` et définir si besoin **`EXPO_PUBLIC_API_URL`** (ex. `http://192.168.x.x:3000` sur téléphone réel). Par défaut : simulateur iOS / web → `localhost:3000` ; émulateur Android → `10.0.2.2:3000`. L’écran d’accueil appelle `GET /` et affiche le message d’accueil de l’API (React Native **Paper** + **Safe Area**).
+Côté app, copier `APP-ASSURMOI-MOBILE/.env.example` vers `.env` et définir si besoin **`EXPO_PUBLIC_API_URL`**. **Expo Web** (navigateur sur le même poste que l’API Docker) : utiliser **`http://localhost:3000`**, pas une IP LAN — sinon le navigateur peut afficher « Failed to fetch » (même si l’API répond). Téléphone sur le Wi‑Fi : `http://192.168.x.x:3000`. Par défaut sans variable : simulateur iOS / web → `localhost:3000` ; émulateur Android → `10.0.2.2:3000`. En **développement**, l’API accepte toute origine CORS (`origin: true`) pour faciliter Expo ; en **production**, renseigner **`CORS_ALLOWED_ORIGINS`** dans l’`.env` du serveur (voir `.env.example` à la racine).
+
+**Authentification mobile** : écran de **connexion** (identifiants alignés sur `POST /api/auth/login` : e-mail ou nom d’utilisateur + mot de passe), **jetons** stockés via **expo-secure-store**, rafraîchissement via `POST /api/auth/refresh`, **déconnexion** via `POST /api/auth/logout`, profil `GET /api/auth/me`, mot de passe oublié `POST /api/auth/forgot-password`. Après login, l’**accueil** affiche le profil, `GET /` (état de l’API) et les liens utiles. UI : [React Native Paper](https://reactnativepaper.com/) (thème type applications assurance) + [Safe Area](https://github.com/react-native/safe-area-context).
+
+**Arborescence (bonnes pratiques type template Expo + modules métier)** : `app/` = routes (expo-router) et écrans ; `components/` = UI réutilisable ; `constants/` = marque & thème ; `features/auth` = contexte session (`useAuth`) ; `lib/` = clients HTTP & config ; `theme/` = thème Paper ; `scripts/` = scripts outillage (dossier réservé).
+
+**Appels API authentifiés** : `apiFetchWithAuth` (`lib/api.ts`) ajoute `Authorization: Bearer` à partir de **expo-secure-store** (mêmes jetons que le contexte) ; en cas de **401**, un **refresh** des jetons est tenté une fois. Les routes publiques restent sur `apiFetch` (ex. `GET /`).
 
 Le dossier **`app-example/`** est l’ancienne démo Expo (après `reset-project`) : vous pouvez le supprimer quand il ne sert plus.
 
