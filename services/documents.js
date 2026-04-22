@@ -146,6 +146,42 @@ const getDocumentFile = async (req, res) => {
   }
 }
 
+const validateDocument = async (req, res) => {
+  try {
+    const id = req.params.id
+    const doc = await Document.findByPk(id)
+    if (!doc) {
+      return res.status(ERROR_CODES.NOT_FOUND.status).json({
+        message: 'Document introuvable',
+        code: ERROR_CODES.NOT_FOUND.code
+      })
+    }
+    if (doc.is_validated) {
+      return res.status(200).json({
+        message: 'Document déjà validé',
+        data: doc
+      })
+    }
+    await doc.update({ is_validated: true })
+    const refreshed = await Document.findByPk(id)
+    await recordHistory({
+      userId: req.user.id,
+      entityType: 'document',
+      entityId: Number(id),
+      action: HISTORY_ACTION.DOCUMENT_VALIDATED
+    })
+    return res.status(200).json({
+      message: 'Document validé',
+      data: refreshed
+    })
+  } catch (err) {
+    return logError(res, err, {
+      context: 'documents.validateDocument',
+      defaultMessage: 'Erreur lors de la validation du document'
+    })
+  }
+}
+
 const SIGNABLE_EXTENSIONS = new Set(['.pdf', '.docx'])
 
 const signDocument = async (req, res) => {
@@ -232,42 +268,6 @@ const signDocument = async (req, res) => {
     return logError(res, err, {
       context: 'documents.signDocument',
       defaultMessage: 'Erreur lors du lancement de la signature Yousign'
-    })
-  }
-}
-
-const validateDocument = async (req, res) => {
-  try {
-    const id = req.params.id
-    const doc = await Document.findByPk(id)
-    if (!doc) {
-      return res.status(ERROR_CODES.NOT_FOUND.status).json({
-        message: 'Document introuvable',
-        code: ERROR_CODES.NOT_FOUND.code
-      })
-    }
-    if (doc.is_validated) {
-      return res.status(200).json({
-        message: 'Document déjà validé',
-        data: doc
-      })
-    }
-    await doc.update({ is_validated: true })
-    const refreshed = await Document.findByPk(id)
-    await recordHistory({
-      userId: req.user.id,
-      entityType: 'document',
-      entityId: Number(id),
-      action: HISTORY_ACTION.DOCUMENT_VALIDATED
-    })
-    return res.status(200).json({
-      message: 'Document validé',
-      data: refreshed
-    })
-  } catch (err) {
-    return logError(res, err, {
-      context: 'documents.validateDocument',
-      defaultMessage: 'Erreur lors de la validation du document'
     })
   }
 }

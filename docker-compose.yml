@@ -1,5 +1,3 @@
-version: '3.1'
-
 services:
   # NodeJS Service
   app-assurmoi-node:
@@ -45,3 +43,26 @@ services:
     restart: always
     ports:
       - 8080:8080
+  # React Native (Expo) — Metro : http://localhost:8081
+  # Inclus par défaut dans `docker compose up` (toute la stack : API + DB + mails + Adminer + mobile).
+  # Sans ce service : voir package.json (script docker:up:api) ou lister les services explicitement.
+  # Doc : https://reactnative.dev/docs/environment-setup
+  app-assurmoi-mobile:
+    container_name: "app-assurmoi-mobile"
+    build:
+      context: ./APP-ASSURMOI-MOBILE
+      dockerfile: Dockerfile
+    command: "npm run start:docker"
+    depends_on:
+      - app-assurmoi-node
+    environment:
+      - NODE_ENV=development
+    ports:
+      - "8081:8081"
+    volumes:
+      - "./APP-ASSURMOI-MOBILE:/home/app:rw"
+    working_dir: "/home/app"
+    networks:
+      - default
+    stdin_open: true
+    tty: true

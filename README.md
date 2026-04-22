@@ -4,7 +4,7 @@
 
 API REST **Node.js** ([Express 5](https://expressjs.com/)), **JavaScript** (CommonJS), avec **Sequelize** et **MariaDB**. Elle couvre l’espace AssurMoi : utilisateurs, authentification JWT, sinistres, dossiers, documents, historique d’audit, notifications, et **signature électronique** via [Yousign API v3](https://yousign.com/fr-fr/api).
 
-Le dépôt inclut **Docker Compose** (API, MariaDB, MailHog, Adminer) et la **documentation interactive** OpenAPI sous `/api-docs`.
+Le dépôt inclut **Docker Compose** (API, MariaDB, MailHog, Adminer, **Expo/Metro** pour `APP-ASSURMOI-MOBILE`) et la **documentation interactive** OpenAPI sous `/api-docs`.
 
 ---
 
@@ -66,8 +66,12 @@ Puis exécuter les migrations (voir plus bas).
 
 ### Avec Docker (recommandé)
 
+**Toute la stack** (API + base + MailHog + Adminer + **bundler mobile Expo** sur le port 8081) :
+
 ```bash
 docker compose up --build
+# ou, équivalent
+npm run docker:up:build
 ```
 
 En arrière-plan :
@@ -76,7 +80,16 @@ En arrière-plan :
 docker compose up -d --build
 ```
 
-L’API écoute sur **http://localhost:3000** (sauf `PORT` modifié).
+- API : **http://localhost:3000**
+- Metro (Expo) : **http://localhost:8081** — pour ouvrir l’app sur un téléphone / émulateur, suivre le flux [Expo](https://reactnative.dev/docs/environment-setup) (Expo Go, QR code, etc.). Le conteneur mobile monte le dossier `APP-ASSURMOI-MOBILE` : les changements de code sont pris en compte côté hôte. Si `node_modules` posent problème (binaires macOS vs Linux), lancer `docker compose run --rm app-assurmoi-mobile npm install` une fois, ou préférer l’Expo en **local** (voir ci-dessous).
+
+**API + services de données uniquement** (pas de conteneur Expo) — utile si vous lancez le mobile sur la machine hôte (`npm start` dans `APP-ASSURMOI-MOBILE`) :
+
+```bash
+npm run docker:up:api
+# avec rebuild des images
+npm run docker:up:api:build
+```
 
 ### Sans Docker
 
@@ -89,6 +102,18 @@ Production (sans recompilation : projet interprété directement) :
 ```bash
 npm start
 ```
+
+**Mobile (Expo) sans Docker** — démarrer l’API (Docker ou `npm run dev`) puis, dans un autre terminal :
+
+```bash
+cd APP-ASSURMOI-MOBILE
+npm install
+npm start
+```
+
+Côté app, copier `APP-ASSURMOI-MOBILE/.env.example` vers `.env` et définir si besoin **`EXPO_PUBLIC_API_URL`** (ex. `http://192.168.x.x:3000` sur téléphone réel). Par défaut : simulateur iOS / web → `localhost:3000` ; émulateur Android → `10.0.2.2:3000`. L’écran d’accueil appelle `GET /` et affiche le message d’accueil de l’API (React Native **Paper** + **Safe Area**).
+
+Le dossier **`app-example/`** est l’ancienne démo Expo (après `reset-project`) : vous pouvez le supprimer quand il ne sert plus.
 
 ---
 

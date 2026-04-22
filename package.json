@@ -9,9 +9,12 @@
   "scripts": {
     "dev": "nodemon app.js",
     "start": "node app.js",
+    "docker:up": "docker compose up",
+    "docker:up:build": "docker compose up --build",
+    "docker:up:api": "docker compose up app-assurmoi-node app-assurmoi-mailhog app-assurmoi-db app-assurmoi-adminer",
+    "docker:up:api:build": "docker compose up --build app-assurmoi-node app-assurmoi-mailhog app-assurmoi-db app-assurmoi-adminer",
     "db:migrate": "sequelize db:migrate",
-    "db:migrate:undo": "sequelize db:migrate:undo",
-    "db:seed": "sequelize db:seed:all"
+    "db:migrate:undo": "sequelize db:migrate:undo"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
