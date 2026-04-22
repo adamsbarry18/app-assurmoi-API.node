@@ -25,6 +25,15 @@ git clone https://github.com/adamsbarry18/app-assurmoi-API.node.git
 cd app-assurmoi-API
 ```
 
+### Repo App AssurMoi Mobile
+
+```bash
+git clone https://github.com/adamsbarry18/app-assurmoi-mobile.git
+cd app-assurmoi-mobile
+npm install
+npm run start
+```
+
 ### Dépendances
 
 ```bash
