@@ -79,17 +79,25 @@ async function sendMail (options) {
   return getTransporter().sendMail(mail)
 }
 
-async function mailForgotPassword (user, link) {
+async function mailForgotPassword (user, webLink, mobileLink) {
   const name = [user.first_name, user.last_name].filter(Boolean).join(' ')
   const to = name ? `${name} <${user.email}>` : user.email
   const greeting = user.first_name ? `Bonjour ${user.first_name}` : 'Bonjour'
+
+  const textBody = mobileLink
+    ? `${greeting},\n\nNavigateur (web) : ${webLink}\n\nApplication mobile (ouvrez sur l’appareil où l’app est installée) : ${mobileLink}\n\nCes liens expirent sous peu.`
+    : `${greeting},\n\nPour réinitialiser votre mot de passe : ${webLink}\n\nCe lien expire sous peu.`
+
+  const htmlBody = mobileLink
+    ? `<p>${greeting},</p><p>Navigateur : <a href="${webLink}">Réinitialiser mon mot de passe</a></p><p>Application mobile : <a href="${mobileLink}">Ouvrir dans l’app AssurMoi</a></p><p><small>Ces liens expirent sous peu.</small></p>`
+    : `<p>${greeting},</p><p><a href="${webLink}">Réinitialiser mon mot de passe</a></p><p><small>Ce lien expire sous peu.</small></p>`
 
   return sendMail({
     from: process.env.MAIL_FROM,
     to,
     subject: 'AssurMoi — réinitialisation du mot de passe',
-    text: `${greeting},\n\nPour réinitialiser votre mot de passe : ${link}\n\nCe lien expire sous peu.`,
-    html: `<p>${greeting},</p><p><a href="${link}">Réinitialiser mon mot de passe</a></p>`
+    text: textBody,
+    html: htmlBody
   })
 }
 

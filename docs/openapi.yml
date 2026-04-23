@@ -269,6 +269,68 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /api/users/insured-options:
+    get:
+      tags: [Utilisateurs]
+      summary: Assurés actifs (sélecteur, rattachement sinistre)
+      description: >
+        Réservé à ADMIN, PORTFOLIO_MANAGER, CUSTOMER_OFFICER.
+        Liste courte de comptes au rôle INSURED actifs (champs publics), pour formulaires métiers.
+      security:
+        - bearerAuth: []
+      operationId: listInsuredOptions
+      parameters:
+        - name: search
+          in: query
+          schema: { type: string, maxLength: 255 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 200, default: 100 }
+      responses:
+        '200':
+          description: Tableau d’utilisateurs (assurés)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InsuredOptionsResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/users/tracking-officer-options:
+    get:
+      tags: [Utilisateurs]
+      summary: Chargés de suivi / admins (affectation dossier)
+      description: >
+        Réservé à ADMIN, PORTFOLIO_MANAGER. Comptes actifs au rôle TRACKING_OFFICER ou ADMIN
+        (rattachement possible à un dossier).
+      security:
+        - bearerAuth: []
+      operationId: listTrackingOfficerOptions
+      parameters:
+        - name: search
+          in: query
+          schema: { type: string, maxLength: 255 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 200, default: 100 }
+      responses:
+        '200':
+          description: Tableau d’utilisateurs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InsuredOptionsResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /api/users/{id}:
     get:
       tags: [Utilisateurs]
@@ -378,7 +440,8 @@ paths:
       tags: [Sinistres]
       summary: Lister les sinistres
       description: |
-        Rôles autorisés : ADMIN, PORTFOLIO_MANAGER, TRACKING_OFFICER, CUSTOMER_OFFICER.
+        Rôles autorisés : ADMIN, PORTFOLIO_MANAGER, TRACKING_OFFICER, CUSTOMER_OFFICER, INSURED.
+        **Assuré (INSURED)** : uniquement les sinistres où `insured_user_id` correspond à l’utilisateur connecté.
         Filtre `status` : `pending_validation`, `validated`, ou statut dossier (`INITIALIZED`, … `CLOSED`).
       security:
         - bearerAuth: []
@@ -460,6 +523,8 @@ paths:
     get:
       tags: [Sinistres]
       summary: Détail d’un sinistre
+      description: |
+        L’assuré (INSURED) n’accède qu’aux sinistres qui lui sont rattachés (`insured_user_id`).
       security:
         - bearerAuth: []
       operationId: getSinisterById
@@ -552,7 +617,8 @@ paths:
       tags: [Documents]
       summary: Uploader un document
       description: |
-        Rôles : ADMIN, PORTFOLIO_MANAGER, CUSTOMER_OFFICER, TRACKING_OFFICER.
+        Rôles : ADMIN, PORTFOLIO_MANAGER, CUSTOMER_OFFICER, TRACKING_OFFICER, INSURED.
+        **Assuré** : seul le type `RIB` est autorisé.
         Corps `multipart/form-data` : champ fichier `file`, champ texte `type` (enum).
         Taille max configurable (`UPLOAD_MAX_BYTES`, défaut 15 Mo). Types MIME autorisés : PDF, PNG, JPEG, GIF, WebP, texte brut.
       security:
@@ -736,7 +802,8 @@ paths:
       tags: [Dossiers]
       summary: Lister les dossiers de prise en charge
       description: |
-        Rôles : ADMIN, PORTFOLIO_MANAGER, TRACKING_OFFICER, CUSTOMER_OFFICER.
+        Rôles : ADMIN, PORTFOLIO_MANAGER, TRACKING_OFFICER, CUSTOMER_OFFICER, INSURED.
+        **Assuré** : uniquement les dossiers dont le sinistre a `insured_user_id` = utilisateur courant.
       security:
         - bearerAuth: []
       operationId: listFolders
@@ -877,6 +944,47 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /api/folders/{id}/scenario:
+    patch:
+      tags: [Dossiers]
+      summary: Définir le scénario du dossier (première fois)
+      description: |
+        Réservé lorsque le dossier n’a pas encore de `scenario` (REPAIRABLE ou TOTAL_LOSS).
+        Requis avant certaines étapes (ex. rapport d’expertise, facture garage, RIB selon le parcours).
+
+        **Rôles** : ADMIN, PORTFOLIO_MANAGER ; ou TRACKING_OFFICER uniquement si le dossier lui est assigné.
+
+        Si le scénario est déjà renseigné, l’API répond **422** (pas de changement par cette route).
+      security:
+        - bearerAuth: []
+      operationId: updateFolderScenario
+      parameters:
+        - $ref: '#/components/parameters/FolderId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FolderScenarioSet'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FolderSingleResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /api/folders/{id}/close:
     patch:
       tags: [Dossiers]
@@ -983,6 +1091,25 @@ paths:
                 $ref: '#/components/schemas/NotificationListResponse'
         '400':
           $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/notifications/mark-all-read:
+    post:
+      tags: [Notifications]
+      summary: Tout marquer comme lu
+      description: Passe toutes les notifications **non lues** de l’utilisateur authentifié en `is_read: true`. Retourne le nombre d’enregistrements mis à jour.
+      security:
+        - bearerAuth: []
+      operationId: markAllMyNotificationsRead
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationMarkAllReadResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '500':
@@ -1195,6 +1322,15 @@ components:
         meta:
           $ref: '#/components/schemas/ListMeta'
 
+    InsuredOptionsResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+
     UserSingleResponse:
       type: object
       properties:
@@ -1271,6 +1407,7 @@ components:
         storage_url: { type: string, nullable: true, description: Chemin relatif côté serveur }
         is_validated: { type: boolean }
         uploaded_at: { type: string, format: date-time, nullable: true }
+        uploaded_by_id: { type: integer, nullable: true, description: Auteur de l’upload (pièces assuré, etc.) }
 
     DocumentMeta:
       type: object
@@ -1431,6 +1568,7 @@ components:
         insurance_certificate_id: { type: integer, nullable: true }
         is_validated_by_manager: { type: boolean }
         created_by_id: { type: integer, nullable: true }
+        insured_user_id: { type: integer, nullable: true, description: Compte assuré rattaché (consultation & dépôts) }
         created_at: { type: string, format: date-time, nullable: true }
         status:
           type: string
@@ -1459,6 +1597,10 @@ components:
             folder:
               $ref: '#/components/schemas/SinisterFolderDetail'
               nullable: true
+            insuredUser:
+              $ref: '#/components/schemas/User'
+              nullable: true
+              description: Assuré rattaché (si renseigné en création / mise à jour)
 
     SinisterCreate:
       type: object
@@ -1478,6 +1620,8 @@ components:
           { type: integer, minimum: 1, description: ID document type REGISTRATION_CARD }
         insurance_certificate_id:
           { type: integer, minimum: 1, description: ID document type INSURANCE_CERT }
+        insured_user_id:
+          { type: integer, minimum: 1, description: ID utilisateur de rôle INSURED à associer }
 
     SinisterUpdate:
       type: object
@@ -1495,6 +1639,7 @@ components:
         cni_driver: { type: integer, minimum: 1 }
         vehicle_registration_doc_id: { type: integer, minimum: 1 }
         insurance_certificate_id: { type: integer, minimum: 1 }
+        insured_user_id: { type: integer, minimum: 1, nullable: true, description: Réassigner l’assuré }
 
     SinisterListResponse:
       type: object
@@ -1617,6 +1762,15 @@ components:
       properties:
         assigned_officer_id: { type: integer, minimum: 1 }
 
+    FolderScenarioSet:
+      type: object
+      required: [scenario]
+      properties:
+        scenario:
+          type: string
+          enum: [REPAIRABLE, TOTAL_LOSS]
+          description: Véhicule réparable vs perte totale / indemnisation
+
     FolderListResponse:
       type: object
       properties:
@@ -1691,6 +1845,15 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/Notification'
+
+    NotificationMarkAllReadResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            updated: { type: integer, minimum: 0, description: Nombre de lignes passées en lues }
+          required: [updated]
 
   responses:
     ValidationError:

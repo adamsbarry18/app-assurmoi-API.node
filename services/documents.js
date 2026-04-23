@@ -4,6 +4,7 @@ const { Document } = require('../models')
 const { logError } = require('../core/logError')
 const { ERROR_CODES, AppError } = require('../core/errors')
 const { ensureUploadRoot, absoluteFromRelative, guessContentType } = require('../utils/uploadPaths')
+const { userCanReadDocument } = require('./documentAccess')
 const { recordHistory, HISTORY_ACTION } = require('./historyAudit')
 const { notifyDocumentPendingValidation } = require('./notificationDispatch')
 const { createAndActivateSignatureRequest } = require('./yousignClient')
@@ -24,14 +25,15 @@ function publicDocumentUrl (req, id) {
 }
 
 const createDocumentRecord = async (
-  { type, diskRelativePath },
+  { type, diskRelativePath, uploadedById },
   { transaction } = {}
 ) => {
   ensureUploadRoot()
   return Document.create(
     {
       type,
-      storage_url: diskRelativePath
+      storage_url: diskRelativePath,
+      uploaded_by_id: uploadedById != null ? uploadedById : null
     },
     { transaction }
   )
@@ -55,9 +57,18 @@ const uploadDocument = async (req, res) => {
       })
     }
 
+    if (req.user.role === 'INSURED' && type !== 'RIB') {
+      fs.unlink(file.path, () => {})
+      return res.status(ERROR_CODES.FORBIDDEN.status).json({
+        message: 'L’assuré ne peut déposer que des RIB (type RIB)',
+        code: ERROR_CODES.FORBIDDEN.code
+      })
+    }
+
     const doc = await createDocumentRecord({
       type,
-      diskRelativePath: req.diskRelativePath
+      diskRelativePath: req.diskRelativePath,
+      uploadedById: req.user.id
     })
 
     await recordHistory({
@@ -98,6 +109,14 @@ const getDocumentFile = async (req, res) => {
       return res.status(ERROR_CODES.NOT_FOUND.status).json({
         message: 'Document introuvable',
         code: ERROR_CODES.NOT_FOUND.code
+      })
+    }
+
+    const canRead = await userCanReadDocument(req.user, Number(id))
+    if (!canRead) {
+      return res.status(ERROR_CODES.FORBIDDEN.status).json({
+        message: 'Accès à ce document refusé',
+        code: ERROR_CODES.FORBIDDEN.code
       })
     }
 

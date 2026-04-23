@@ -7,7 +7,8 @@ const {
   forgotPasswordValidators,
   resetPasswordValidators,
   inviteValidators,
-  completeInviteValidators
+  completeInviteValidators,
+  invitationIdParamValidators
 } = require('../middlewares/authValidators')
 const {
   login,
@@ -17,6 +18,8 @@ const {
   forgotPassword,
   resetPassword,
   sendInvitation,
+  resendInvitation,
+  cancelInvitation,
   completeInvite
 } = require('../services/auth')
 
@@ -32,6 +35,20 @@ router.post(
   requireRoles('ADMIN'),
   inviteValidators,
   sendInvitation
+)
+router.post(
+  '/invitations/:id/resend',
+  authenticate,
+  requireRoles('ADMIN'),
+  invitationIdParamValidators,
+  resendInvitation
+)
+router.post(
+  '/invitations/:id/cancel',
+  authenticate,
+  requireRoles('ADMIN'),
+  invitationIdParamValidators,
+  cancelInvitation
 )
 router.post('/complete-invite', completeInviteValidators, completeInvite)
 

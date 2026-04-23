@@ -57,6 +57,9 @@ const createSinisterValidators = [
   body('insurance_certificate_id')
     .optional({ values: 'null' })
     .isInt({ min: 1 }),
+  body('insured_user_id')
+    .optional({ values: 'null' })
+    .isInt({ min: 1 }),
   body().custom((body, { req }) => {
     const dr = req.body.driver_responsability
     const pct = req.body.driver_engaged_responsibility
@@ -87,6 +90,9 @@ const updateSinisterValidators = [
     .optional({ values: 'null' })
     .isInt({ min: 1 }),
   body('insurance_certificate_id')
+    .optional({ values: 'null' })
+    .isInt({ min: 1 }),
+  body('insured_user_id')
     .optional({ values: 'null' })
     .isInt({ min: 1 }),
   body().custom((body, { req }) => {

@@ -7,6 +7,10 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: 'created_by_id',
         as: 'creator'
       })
+      Sinister.belongsTo(models.User, {
+        foreignKey: 'insured_user_id',
+        as: 'insuredUser'
+      })
       Sinister.belongsTo(models.Document, {
         foreignKey: 'cni_driver',
         as: 'cniDocument'
@@ -89,6 +93,10 @@ module.exports = (sequelize, DataTypes) => {
         defaultValue: false
       },
       created_by_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+      },
+      insured_user_id: {
         type: DataTypes.INTEGER,
         allowNull: true
       }

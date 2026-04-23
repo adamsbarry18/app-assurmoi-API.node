@@ -5,7 +5,8 @@ const {
   listFoldersQueryValidators,
   folderIdParamValidator,
   createFolderValidators,
-  assignOfficerValidators
+  assignOfficerValidators,
+  updateFolderScenarioValidators
 } = require('../middlewares/folders')
 const {
   folderIdForStepsValidators,
@@ -16,20 +17,29 @@ const {
   getFolder,
   createFolder,
   assignOfficer,
+  updateFolderScenario,
   closeFolder
 } = require('../services/folders')
-const { listFolderSteps, createFolderStep, ROLES_STEP_WRITE } = require('../services/folderSteps')
+const {
+  listFolderSteps,
+  createFolderStep,
+  ROLES_STEP_WRITE_OR_INSURED
+} = require('../services/folderSteps')
 
 const ROLES_READ = [
   'ADMIN',
   'PORTFOLIO_MANAGER',
   'TRACKING_OFFICER',
-  'CUSTOMER_OFFICER'
+  'CUSTOMER_OFFICER',
+  'INSURED'
 ]
 
 const ROLES_CREATE = ['ADMIN', 'PORTFOLIO_MANAGER', 'CUSTOMER_OFFICER']
 
 const ROLES_MANAGE = ['ADMIN', 'PORTFOLIO_MANAGER']
+
+/** Scénario sur dossier existant : gestionnaires ou chargé assigné */
+const ROLES_SCENARIO = ['ADMIN', 'PORTFOLIO_MANAGER', 'TRACKING_OFFICER']
 
 router.get(
   '/',
@@ -56,6 +66,14 @@ router.patch(
 )
 
 router.patch(
+  '/:id/scenario',
+  authenticate,
+  requireRoles(...ROLES_SCENARIO),
+  updateFolderScenarioValidators,
+  updateFolderScenario
+)
+
+router.patch(
   '/:id/close',
   authenticate,
   requireRoles(...ROLES_MANAGE),
@@ -74,7 +92,7 @@ router.get(
 router.post(
   '/:id/steps',
   authenticate,
-  requireRoles(...ROLES_STEP_WRITE),
+  requireRoles(...ROLES_STEP_WRITE_OR_INSURED),
   createFolderStepValidators,
   createFolderStep
 )

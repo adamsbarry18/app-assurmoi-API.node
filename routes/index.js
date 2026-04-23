@@ -1,3 +1,4 @@
+const path = require('path')
 const userRoutes = require('./users')
 const authRoutes = require('./auth')
 const sinisterRoutes = require('./sinisters')
@@ -7,7 +8,17 @@ const historyRoutes = require('./history')
 const notificationRoutes = require('./notifications')
 const logger = require('../core/logger')
 
+const templatesDir = path.join(__dirname, '..', 'templates')
+
 function initRoutes (app) {
+  /** Pages HTML (liens e-mail : invitation, reset mot de passe) — voir /templates */
+  app.get('/register', (req, res) => {
+    res.sendFile(path.join(templatesDir, 'register.html'))
+  })
+  app.get('/reset-password', (req, res) => {
+    res.sendFile(path.join(templatesDir, 'reset-password.html'))
+  })
+
   app.use('/api/auth', authRoutes)
   app.use('/api/users', userRoutes)
   app.use('/api/sinisters', sinisterRoutes)

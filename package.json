@@ -13,7 +13,7 @@
     "docker:up:build": "docker compose up --build",
     "docker:up:api": "docker compose up app-assurmoi-node app-assurmoi-mailhog app-assurmoi-db app-assurmoi-adminer",
     "docker:up:api:build": "docker compose up --build app-assurmoi-node app-assurmoi-mailhog app-assurmoi-db app-assurmoi-adminer",
-    "db:migrate": "sequelize db:migrate",
+    "db:migrate": "docker compose run app-assurmoi-node npx sequelize-cli db:migrate",
     "db:migrate:undo": "sequelize db:migrate:undo"
   },
   "dependencies": {

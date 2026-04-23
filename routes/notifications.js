@@ -5,7 +5,13 @@ const {
   listNotificationsQueryValidators,
   notificationIdParamValidator
 } = require('../middlewares/notifications')
-const { listMyNotifications, markNotificationRead } = require('../services/notifications')
+const {
+  listMyNotifications,
+  markNotificationRead,
+  markAllMyNotificationsRead
+} = require('../services/notifications')
+
+router.post('/mark-all-read', authenticate, markAllMyNotificationsRead)
 
 router.get(
   '/',

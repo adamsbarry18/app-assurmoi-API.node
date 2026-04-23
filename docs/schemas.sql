@@ -44,8 +44,12 @@ CREATE TABLE documents (
 
     storage_url VARCHAR(512),
     is_validated BOOLEAN DEFAULT FALSE,
+    uploaded_by_id INT,
 
-    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_document_uploaded_by
+        FOREIGN KEY (uploaded_by_id) REFERENCES users(id)
 );
 
 -- =========================
@@ -75,6 +79,7 @@ CREATE TABLE sinisters (
     is_validated_by_manager BOOLEAN DEFAULT FALSE,
 
     created_by_id INT,
+    insured_user_id INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_sinister_cni_driver
@@ -87,7 +92,10 @@ CREATE TABLE sinisters (
         FOREIGN KEY (insurance_certificate_id) REFERENCES documents(id),
 
     CONSTRAINT fk_sinister_created_by
-        FOREIGN KEY (created_by_id) REFERENCES users(id)
+        FOREIGN KEY (created_by_id) REFERENCES users(id),
+
+    CONSTRAINT fk_sinister_insured_user
+        FOREIGN KEY (insured_user_id) REFERENCES users(id)
 );
 
 -- =========================

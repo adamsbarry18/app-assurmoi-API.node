@@ -1,6 +1,6 @@
 const { Op } = require('sequelize')
 const bcrypt = require('bcryptjs')
-const { User, dbInstance } = require('../models')
+const { User, Invitation, dbInstance } = require('../models')
 const {
   signAccessToken,
   signRefreshToken,
@@ -150,8 +150,11 @@ const forgotPassword = async (req, res) => {
         ''
       )
       const link = `${base}/reset-password?token=${encodeURIComponent(token)}`
+      let scheme = (process.env.MOBILE_APP_SCHEME || 'assurmoiapp').trim()
+      scheme = scheme.replace(/:\/\/.*/, '').replace(/\/$/, '')
+      const mobileLink = `${scheme}://reset-password?token=${encodeURIComponent(token)}`
       try {
-        await mailForgotPassword(user, link)
+        await mailForgotPassword(user, link, mobileLink)
       } catch {
         console.log('Notification email non envoyée')
       }
@@ -205,15 +208,77 @@ const resetPassword = async (req, res) => {
 }
 
 const sendInvitation = async (req, res) => {
+  const transaction = await dbInstance.transaction()
   try {
     const { email, role } = req.body
-    const existing = await User.findOne({ where: { email } })
+    const existing = await User.findOne({ where: { email }, transaction })
     if (existing) {
+      await transaction.rollback()
       return res.status(ERROR_CODES.CONFLICT.status).json({
         message: 'Un compte existe déjà avec cet email',
         code: ERROR_CODES.CONFLICT.code
       })
     }
+    const pending = await Invitation.findOne({
+      where: { email, status: 'pending' },
+      transaction
+    })
+    if (pending) {
+      await transaction.rollback()
+      return res.status(ERROR_CODES.CONFLICT.status).json({
+        message: 'Une invitation est déjà en attente pour cet email',
+        code: ERROR_CODES.CONFLICT.code
+      })
+    }
+    const inv = await Invitation.create(
+      { email, role, status: 'pending' },
+      { transaction }
+    )
+    const inviteToken = signInviteToken(email, role)
+    const base = (process.env.PUBLIC_APP_URL || 'http://localhost:3000').replace(
+      /\/$/,
+      ''
+    )
+    const link = `${base}/register?token=${encodeURIComponent(inviteToken)}`
+    try {
+      await mailInvitation({ email, role, link })
+    } catch (mailErr) {
+      await transaction.rollback()
+      throw mailErr
+    }
+    await transaction.commit()
+    return res.status(200).json({
+      message: 'Invitation envoyée',
+      data: { id: inv.id, email: inv.email, role: inv.role, status: inv.status }
+    })
+  } catch (err) {
+    try {
+      await transaction.rollback()
+    } catch (_) {}
+    return logError(res, err, {
+      context: 'auth.sendInvitation',
+      defaultMessage: "Erreur lors de l'envoi de l'invitation"
+    })
+  }
+}
+
+const resendInvitation = async (req, res) => {
+  try {
+    const id = req.params.id
+    const inv = await Invitation.findByPk(id)
+    if (!inv) {
+      return res.status(ERROR_CODES.NOT_FOUND.status).json({
+        message: 'Invitation introuvable',
+        code: ERROR_CODES.NOT_FOUND.code
+      })
+    }
+    if (inv.status !== 'pending') {
+      return res.status(ERROR_CODES.BAD_REQUEST.status).json({
+        message: 'Seule une invitation en attente peut être renvoyée',
+        code: ERROR_CODES.BAD_REQUEST.code
+      })
+    }
+    const { email, role } = inv
     const inviteToken = signInviteToken(email, role)
     const base = (process.env.PUBLIC_APP_URL || 'http://localhost:3000').replace(
       /\/$/,
@@ -221,11 +286,44 @@ const sendInvitation = async (req, res) => {
     )
     const link = `${base}/register?token=${encodeURIComponent(inviteToken)}`
     await mailInvitation({ email, role, link })
-    return res.status(200).json({ message: 'Invitation envoyée' })
+    return res.status(200).json({ message: 'Invitation renvoyée' })
   } catch (err) {
     return logError(res, err, {
-      context: 'auth.sendInvitation',
+      context: 'auth.resendInvitation',
       defaultMessage: "Erreur lors de l'envoi de l'invitation"
+    })
+  }
+}
+
+const cancelInvitation = async (req, res) => {
+  const transaction = await dbInstance.transaction()
+  try {
+    const id = req.params.id
+    const inv = await Invitation.findByPk(id, { transaction })
+    if (!inv) {
+      await transaction.rollback()
+      return res.status(ERROR_CODES.NOT_FOUND.status).json({
+        message: 'Invitation introuvable',
+        code: ERROR_CODES.NOT_FOUND.code
+      })
+    }
+    if (inv.status !== 'pending') {
+      await transaction.rollback()
+      return res.status(ERROR_CODES.BAD_REQUEST.status).json({
+        message: "L'invitation n'est plus en attente",
+        code: ERROR_CODES.BAD_REQUEST.code
+      })
+    }
+    await inv.update({ status: 'cancelled' }, { transaction })
+    await transaction.commit()
+    return res.status(200).json({ message: 'Invitation annulée' })
+  } catch (err) {
+    try {
+      await transaction.rollback()
+    } catch (_) {}
+    return logError(res, err, {
+      context: 'auth.cancelInvitation',
+      defaultMessage: "Erreur lors de l'annulation"
     })
   }
 }
@@ -280,6 +378,10 @@ const completeInvite = async (req, res) => {
       },
       { transaction }
     )
+    await Invitation.update(
+      { status: 'accepted' },
+      { where: { email, status: 'pending' }, transaction }
+    )
     const accessToken = signAccessToken(created)
     const refreshToken = signRefreshToken(created)
     await created.update({ refresh_token: refreshToken }, { transaction })
@@ -311,5 +413,7 @@ module.exports = {
   forgotPassword,
   resetPassword,
   sendInvitation,
+  resendInvitation,
+  cancelInvitation,
   completeInvite
 }

@@ -1,6 +1,6 @@
 const { Op } = require('sequelize')
 const bcrypt = require('bcryptjs')
-const { User, dbInstance } = require('../models')
+const { User, Invitation, dbInstance } = require('../models')
 const { logError } = require('../core/logError')
 const { ERROR_CODES } = require('../core/errors')
 const { recordHistory, HISTORY_ACTION } = require('./historyAudit')
@@ -30,10 +30,30 @@ function parseListPagination (query) {
   return { limit, offset }
 }
 
+const formatListUser = (u) => ({ kind: 'user', ...sanitizeUser(u) })
+
+const formatListInvitation = (inv) => {
+  const j = inv.toJSON ? inv.toJSON() : inv
+  return {
+    kind: 'invitation',
+    id: j.id,
+    email: j.email,
+    role: j.role,
+    status: j.status,
+    username: null,
+    first_name: null,
+    last_name: null,
+    is_active: null,
+    created_at: j.created_at,
+    updated_at: j.updated_at
+  }
+}
+
 const getAllUsers = async (req, res) => {
   try {
     const { limit, offset } = parseListPagination(req.query)
     const where = {}
+    const isActiveQ = req.query.is_active
 
     if (req.query.search) {
       const term = `%${req.query.search}%`
@@ -47,20 +67,51 @@ const getAllUsers = async (req, res) => {
     if (req.query.role !== undefined) {
       where.role = req.query.role
     }
-    if (req.query.is_active !== undefined) {
-      where.is_active = req.query.is_active === 'true'
+    if (isActiveQ !== undefined) {
+      where.is_active = isActiveQ === 'true'
     }
 
-    const { rows, count } = await User.findAndCountAll({
-      where,
-      limit,
-      offset,
-      order: [['created_at', 'DESC']]
-    })
+    if (isActiveQ === 'true') {
+      const { rows, count } = await User.findAndCountAll({
+        where,
+        limit,
+        offset,
+        order: [['created_at', 'DESC']]
+      })
+      return res.status(200).json({
+        data: rows.map(formatListUser),
+        meta: { total: count, limit, offset }
+      })
+    }
 
+    const invWhere = { status: 'pending' }
+    if (req.query.role !== undefined) {
+      invWhere.role = req.query.role
+    }
+    if (req.query.search) {
+      const term = `%${req.query.search}%`
+      invWhere.email = { [Op.like]: term }
+    }
+
+    const [usersList, invList] = await Promise.all([
+      User.findAll({ where, order: [['created_at', 'DESC']] }),
+      isActiveQ === 'false' || isActiveQ === undefined
+        ? Invitation.findAll({ where: invWhere, order: [['created_at', 'DESC']] })
+        : Promise.resolve([])
+    ])
+
+    const merged = [
+      ...usersList.map((u) => ({ sortAt: u.created_at, item: () => formatListUser(u) })),
+      ...invList.map((i) => ({ sortAt: i.created_at, item: () => formatListInvitation(i) }))
+    ].sort(
+      (a, b) => new Date(b.sortAt).getTime() - new Date(a.sortAt).getTime()
+    )
+
+    const total = merged.length
+    const page = merged.slice(offset, offset + limit)
     return res.status(200).json({
-      data: rows.map(sanitizeUser),
-      meta: { total: count, limit, offset }
+      data: page.map((e) => e.item()),
+      meta: { total, limit, offset }
     })
   } catch (err) {
     return logError(res, err, {
@@ -329,13 +380,163 @@ const deactivateUser = async (req, res) => {
   }
 }
 
+const activateUser = async (req, res) => {
+  const transaction = await dbInstance.transaction()
+  try {
+    const userId = req.params.id
+    const user = await User.findByPk(userId, { transaction })
+    if (!user) {
+      await transaction.rollback()
+      return res.status(ERROR_CODES.NOT_FOUND.status).json({
+        message: 'Utilisateur introuvable',
+        code: ERROR_CODES.NOT_FOUND.code
+      })
+    }
+
+    await user.update({ is_active: true }, { transaction })
+    await transaction.commit()
+
+    const refreshed = await User.findByPk(userId)
+    await recordHistory({
+      userId: req.user.id,
+      entityType: 'user',
+      entityId: Number(userId),
+      action: HISTORY_ACTION.USER_ACTIVATED
+    })
+    return res.status(200).json({
+      message: 'Utilisateur réactivé',
+      data: sanitizeUser(refreshed)
+    })
+  } catch (err) {
+    await transaction.rollback()
+    return logError(res, err, {
+      context: 'users.activateUser',
+      defaultMessage: 'Erreur lors de la réactivation'
+    })
+  }
+}
+
+/**
+ * Assurés actifs (liste courte pour raccourcis métier : rattachement sinistre, etc.).
+ */
+const listInsuredOptions = async (req, res) => {
+  try {
+    const rawLimit = req.query.limit
+    let limit = Number.parseInt(String(rawLimit ?? '100'), 10)
+    if (Number.isNaN(limit) || limit < 1) limit = 100
+    if (limit > 200) limit = 200
+
+    const where = {
+      role: 'INSURED',
+      is_active: true
+    }
+
+    if (req.query.search && String(req.query.search).trim() !== '') {
+      const term = `%${String(req.query.search).trim()}%`
+      where[Op.or] = [
+        { username: { [Op.like]: term } },
+        { email: { [Op.like]: term } },
+        { first_name: { [Op.like]: term } },
+        { last_name: { [Op.like]: term } }
+      ]
+    }
+
+    const rows = await User.findAll({
+      where,
+      attributes: [
+        'id',
+        'username',
+        'email',
+        'first_name',
+        'last_name',
+        'role',
+        'is_active'
+      ],
+      order: [
+        ['last_name', 'ASC'],
+        ['first_name', 'ASC'],
+        ['id', 'ASC']
+      ],
+      limit
+    })
+
+    return res.status(200).json({
+      data: rows.map((u) => sanitizeUser(u))
+    })
+  } catch (err) {
+    return logError(res, err, {
+      context: 'users.listInsuredOptions',
+      defaultMessage: 'Erreur lors de la liste des assurés'
+    })
+  }
+}
+
+/**
+ * Admins et chargés de suivi actifs (affectation dossier : rôles TRACKING_OFFICER ou ADMIN côté API).
+ */
+const listTrackingOfficerOptions = async (req, res) => {
+  try {
+    const rawLimit = req.query.limit
+    let limit = Number.parseInt(String(rawLimit ?? '100'), 10)
+    if (Number.isNaN(limit) || limit < 1) limit = 100
+    if (limit > 200) limit = 200
+
+    const where = {
+      role: { [Op.in]: ['TRACKING_OFFICER', 'ADMIN'] },
+      is_active: true
+    }
+
+    if (req.query.search && String(req.query.search).trim() !== '') {
+      const term = `%${String(req.query.search).trim()}%`
+      where[Op.or] = [
+        { username: { [Op.like]: term } },
+        { email: { [Op.like]: term } },
+        { first_name: { [Op.like]: term } },
+        { last_name: { [Op.like]: term } }
+      ]
+    }
+
+    const rows = await User.findAll({
+      where,
+      attributes: [
+        'id',
+        'username',
+        'email',
+        'first_name',
+        'last_name',
+        'role',
+        'is_active'
+      ],
+      order: [
+        ['role', 'ASC'],
+        ['last_name', 'ASC'],
+        ['first_name', 'ASC'],
+        ['id', 'ASC']
+      ],
+      limit
+    })
+
+    return res.status(200).json({
+      data: rows.map((u) => sanitizeUser(u))
+    })
+  } catch (err) {
+    return logError(res, err, {
+      context: 'users.listTrackingOfficerOptions',
+      defaultMessage: 'Erreur lors de la liste des chargés de suivi'
+    })
+  }
+}
+
 module.exports = {
   getAllUsers,
   getUser,
+  listInsuredOptions,
+  listTrackingOfficerOptions,
   createUser,
   updateUser,
   deleteUser,
   deactivateUser,
+  activateUser,
   sanitizeUser,
   hashPassword
 }

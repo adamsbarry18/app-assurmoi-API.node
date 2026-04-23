@@ -31,12 +31,15 @@ const HISTORY_ACTION = Object.freeze({
   DOCUMENT_SIGNATURE_REQUESTED: 'document.signature_requested',
   FOLDER_CREATED: 'folder.created',
   FOLDER_ASSIGNED: 'folder.assigned',
+  /** Première définition du scénario (REPAIRABLE / TOTAL_LOSS) sur un dossier existant */
+  FOLDER_SCENARIO_SET: 'folder.scenario_set',
   FOLDER_CLOSED: 'folder.closed',
   /** Préfixe ; le service peut suffixer `:step_type` pour le détail */
   FOLDER_STEP_CREATED: 'folder_step.created',
   USER_CREATED: 'user.created',
   USER_UPDATED: 'user.updated',
   USER_DEACTIVATED: 'user.deactivated',
+  USER_ACTIVATED: 'user.activated',
   USER_DELETED: 'user.deleted'
 })
 

@@ -4,6 +4,13 @@ const { AppError, ERROR_CODES } = require('../core/errors')
 /**
  * Types d’étape reconnus par le moteur (convention API).
  * Scénario 1 = véhicule réparable → REPAIRABLE. Scénario 2 = perte totale / indemnisation → TOTAL_LOSS.
+ *
+ * **Lecture cahier (synthèse)** — les libellés métier du cahier se regroupent ainsi :
+ * - Parcours pièces sinistre : hors étapes dossier ; liens CNI / carte grise / attestation sur le sinistre,
+ *   validation documents puis validation sinistre.
+ * - REPAIRABLE : expertise & devis / facturation atelier → `S1_EXPERT_REPORT`, `S1_INVOICE`, échéances
+ *   `EXPERTISE_ECHEANCE` / `GENERIC_ECHEANCE`, règlement `PAYMENT_SETTLED`, refacturation tiers si besoin.
+ * - TOTAL_LOSS : expertise, indemnisation, RIB assuré → `S2_RIB`, `PAYMENT_SETTLED`, etc.
  */
 const STEP_TYPE = Object.freeze({
   S1_EXPERT_REPORT: 'S1_EXPERT_REPORT',
@@ -55,7 +62,8 @@ function getEffectiveResponsibilityPct (sinister) {
 function assertStepDocumentRules (
   folder,
   { stepType, documentId },
-  documentInstance
+  documentInstance,
+  { allowUnvalidatedRibFromInsured = false } = {}
 ) {
   const rule = findStructuredDocRule(stepType)
 
@@ -87,7 +95,12 @@ function assertStepDocumentRules (
     if (!documentInstance) {
       throw new AppError('Document introuvable', 400, ERROR_CODES.BAD_REQUEST.code)
     }
-    if (!documentInstance.is_validated) {
+    const skipValidationBecauseInsuredRib =
+      allowUnvalidatedRibFromInsured &&
+      stepType === STEP_TYPE.S2_RIB &&
+      documentInstance.type === 'RIB' &&
+      !documentInstance.is_validated
+    if (!documentInstance.is_validated && !skipValidationBecauseInsuredRib) {
       throw new AppError(
         'Document non validé : validation gestionnaire requise avant de lier cette étape',
         422,

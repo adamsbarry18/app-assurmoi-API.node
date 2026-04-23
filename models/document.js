@@ -12,7 +12,12 @@ const DOCUMENT_TYPES = Object.freeze([
 
 module.exports = (sequelize, DataTypes) => {
   class Document extends Model {
-    static associate () {}
+    static associate (models) {
+      Document.belongsTo(models.User, {
+        foreignKey: 'uploaded_by_id',
+        as: 'uploadedBy'
+      })
+    }
   }
 
   Document.init(
@@ -34,6 +39,10 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.BOOLEAN,
         allowNull: false,
         defaultValue: false
+      },
+      uploaded_by_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true
       }
     },
     {

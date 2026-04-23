@@ -52,10 +52,17 @@ const listUsersQueryValidators = [
   handleValidationErrors
 ]
 
+const listInsuredOptionsQueryValidators = [
+  query('search').optional().trim().isLength({ max: 255 }),
+  query('limit').optional().isInt({ min: 1, max: 200 }).toInt(),
+  handleValidationErrors
+]
+
 module.exports = {
   createUserValidators,
   updateUserValidators,
   idParamValidator,
   listUsersQueryValidators,
+  listInsuredOptionsQueryValidators,
   USER_ROLES
 }

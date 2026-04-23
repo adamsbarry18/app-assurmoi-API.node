@@ -47,6 +47,7 @@ function attachComputedStatus (row) {
 
 const sinisterIncludeDetail = [
   { model: User, as: 'creator', attributes: ['id', 'username', 'email', 'role', 'first_name', 'last_name'] },
+  { model: User, as: 'insuredUser', attributes: ['id', 'username', 'email', 'role', 'first_name', 'last_name'] },
   { model: Document, as: 'cniDocument' },
   { model: Document, as: 'registrationDocument' },
   { model: Document, as: 'insuranceDocument' },
@@ -58,8 +59,37 @@ const sinisterIncludeDetail = [
 ]
 
 const sinisterIncludeList = [
-  { model: SinisterFolder, as: 'folder', attributes: ['id', 'folder_reference', 'status', 'scenario', 'is_closed', 'created_at'] }
+  {
+    model: SinisterFolder,
+    as: 'folder',
+    attributes: ['id', 'folder_reference', 'status', 'scenario', 'is_closed', 'created_at']
+  }
 ]
+
+async function resolveInsuredUserId (rawId, { transaction } = {}) {
+  if (rawId === undefined || rawId === null || rawId === '') {
+    return null
+  }
+  const id = Number(rawId)
+  if (Number.isNaN(id)) {
+    throw new AppError('insured_user_id invalide', 400, ERROR_CODES.BAD_REQUEST.code)
+  }
+  const u = await User.findByPk(id, { transaction })
+  if (!u) {
+    throw new AppError('Utilisateur assuré introuvable', 400, ERROR_CODES.BAD_REQUEST.code)
+  }
+  if (u.role !== 'INSURED') {
+    throw new AppError(
+      'insured_user_id doit désigner un compte au rôle INSURED',
+      400,
+      ERROR_CODES.BAD_REQUEST.code
+    )
+  }
+  if (!u.is_active) {
+    throw new AppError('Compte assuré inactif', 400, ERROR_CODES.BAD_REQUEST.code)
+  }
+  return id
+}
 
 async function assertSinisterDocumentSlots (body, { transaction } = {}) {
   if (body.cni_driver !== undefined && body.cni_driver != null) {
@@ -116,6 +146,10 @@ const listSinisters = async (req, res) => {
       where.incident_datetime[Op.lte] = new Date(req.query.incident_datetime_to)
     }
 
+    if (req.user.role === 'INSURED') {
+      where.insured_user_id = req.user.id
+    }
+
     const status = req.query.status
     const include = [...sinisterIncludeList]
 
@@ -166,6 +200,12 @@ const getSinister = async (req, res) => {
         code: ERROR_CODES.NOT_FOUND.code
       })
     }
+    if (req.user.role === 'INSURED' && sinister.insured_user_id !== req.user.id) {
+      return res.status(ERROR_CODES.NOT_FOUND.status).json({
+        message: 'Sinistre introuvable',
+        code: ERROR_CODES.NOT_FOUND.code
+      })
+    }
     const data = attachComputedStatus(sinister)
     return res.status(200).json({ data })
   } catch (err) {
@@ -196,6 +236,10 @@ const createSinister = async (req, res) => {
       insurance_certificate_id: insuranceCertificateId
     } = req.body
 
+    const insuredUserId = await resolveInsuredUserId(req.body.insured_user_id, {
+      transaction
+    })
+
     const created = await Sinister.create(
       {
         vehicle_plate: vehiclePlate,
@@ -213,7 +257,8 @@ const createSinister = async (req, res) => {
         cni_driver: cniDriver ?? null,
         vehicle_registration_doc_id: vehicleRegistrationDocId ?? null,
         insurance_certificate_id: insuranceCertificateId ?? null,
-        created_by_id: req.user.id
+        created_by_id: req.user.id,
+        insured_user_id: insuredUserId
       },
       { transaction }
     )
@@ -310,6 +355,11 @@ const updateSinister = async (req, res) => {
     }
     if (insuranceCertificateId !== undefined) {
       updates.insurance_certificate_id = insuranceCertificateId
+    }
+    if (req.body.insured_user_id !== undefined) {
+      updates.insured_user_id = await resolveInsuredUserId(req.body.insured_user_id, {
+        transaction
+      })
     }
 
     if (Object.keys(updates).length === 0) {

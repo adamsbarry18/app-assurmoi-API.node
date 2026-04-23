@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Finaliser votre inscription — AssurMoi</title>
+  <style>
+    :root { --bg: #0f172a; --card: #fff; --primary: #00695c; --err: #b71c1c; --muted: #64748b; }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; min-height: 100vh; background: linear-gradient(160deg, #0d47a1 0%, #004d40 100%); color: #0f172a; display: flex; align-items: center; justify-content: center; padding: 24px; }
+    .card { background: var(--card); border-radius: 16px; padding: 28px; max-width: 420px; width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,.2); }
+    h1 { font-size: 1.35rem; margin: 0 0 8px; color: var(--bg); }
+    p.lead { margin: 0 0 20px; color: var(--muted); font-size: 0.95rem; line-height: 1.5; }
+    label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+    input { width: 100%; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 1rem; margin-bottom: 14px; }
+    input:focus { outline: 2px solid rgba(0, 105, 92, 0.35); border-color: var(--primary); }
+    button { width: 100%; padding: 12px; border: none; border-radius: 10px; background: var(--primary); color: #fff; font-size: 1rem; font-weight: 600; cursor: pointer; margin-top: 8px; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .msg { padding: 12px; border-radius: 10px; margin-bottom: 16px; font-size: 0.9rem; display: none; }
+    .msg.err { background: #ffebee; color: var(--err); display: block; }
+    .msg.ok { background: #e8f5e9; color: #1b5e20; display: block; }
+    .msg.ok.success-only { display: block; background: #e8f5e9; color: #1b5e20; font-size: 1.1rem; line-height: 1.55; text-align: center; padding: 24px 16px; margin-bottom: 0; }
+    .token-missing { color: var(--err); }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div id="intro">
+      <h1>Créer votre compte</h1>
+      <p class="lead">Complétez votre profil pour activer l’accès AssurMoi. Le mot de passe définit ici est celui de votre compte.</p>
+    </div>
+    <div id="msg" class="msg" role="alert"></div>
+    <form id="form" style="display: none;">
+      <label for="username">Identifiant</label>
+      <input id="username" name="username" required autocomplete="username" maxlength="255" />
+      <label for="first_name">Prénom</label>
+      <input id="first_name" name="first_name" autocomplete="given-name" />
+      <label for="last_name">Nom</label>
+      <input id="last_name" name="last_name" autocomplete="family-name" />
+      <label for="password">Mot de passe (8 caractères min.)</label>
+      <input id="password" name="password" type="password" required minlength="8" autocomplete="new-password" />
+      <label for="password2">Confirmer le mot de passe</label>
+      <input id="password2" name="password2" type="password" required minlength="8" autocomplete="new-password" />
+      <button type="submit" id="btn">Valider mon inscription</button>
+    </form>
+    <p id="no-token" class="token-missing" style="display: none;">Lien incomplet ou expiré : aucun jeton d’invitation dans l’URL. Ouvrez le lien reçu par e-mail.</p>
+  </div>
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search)
+      var token = params.get('token')
+      var form = document.getElementById('form')
+      var noToken = document.getElementById('no-token')
+      var msg = document.getElementById('msg')
+      var btn = document.getElementById('btn')
+
+      function showErr (text) {
+        msg.style.display = ''
+        msg.className = 'msg err'
+        msg.textContent = text
+      }
+      function showOk (text, successOnly) {
+        msg.style.display = ''
+        msg.className = successOnly ? 'msg ok success-only' : 'msg ok'
+        msg.textContent = text
+      }
+
+      if (!token) {
+        noToken.style.display = 'block'
+        return
+      }
+      form.style.display = 'block'
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault()
+        var username = document.getElementById('username').value.trim()
+        var password = document.getElementById('password').value
+        var password2 = document.getElementById('password2').value
+        var first_name = document.getElementById('first_name').value.trim() || undefined
+        var last_name = document.getElementById('last_name').value.trim() || undefined
+        if (password !== password2) {
+          showErr('Les mots de passe ne correspondent pas.')
+          return
+        }
+        btn.disabled = true
+        msg.style.display = 'none'
+        fetch('/api/auth/complete-invite', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({ token: token, username: username, password: password, first_name: first_name, last_name: last_name })
+        })
+          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, status: r.status, body: j } }) })
+          .then(function (res) {
+            if (res.ok) {
+              var intro = document.getElementById('intro')
+              if (intro) intro.style.display = 'none'
+              form.style.display = 'none'
+              showOk(
+                'Votre compte est activé. Vous avez bien finalisé votre enregistrement.',
+                true
+              )
+            } else {
+              showErr((res.body && res.body.message) || 'Erreur ' + res.status)
+            }
+          })
+          .catch(function () { showErr('Erreur réseau. Réessayez.') })
+          .finally(function () { btn.disabled = false })
+      })
+    })()
+  </script>
+</body>
+</html>

@@ -34,6 +34,7 @@ function parseListPagination (query) {
 
 const sinisterIncludeForFolderDetail = [
   { model: User, as: 'creator', attributes: ['id', 'username', 'email', 'role', 'first_name', 'last_name'] },
+  { model: User, as: 'insuredUser', attributes: ['id', 'username', 'email', 'role', 'first_name', 'last_name'] },
   { model: Document, as: 'cniDocument' },
   { model: Document, as: 'registrationDocument' },
   { model: Document, as: 'insuranceDocument' }
@@ -77,7 +78,8 @@ const folderIncludeList = [
       'id',
       'vehicle_plate',
       'incident_datetime',
-      'is_validated_by_manager'
+      'is_validated_by_manager',
+      'insured_user_id'
     ]
   },
   {
@@ -105,9 +107,20 @@ const listFolders = async (req, res) => {
       }
     }
 
+    const include = folderIncludeList.map((inc, i) => {
+      if (i === 0 && req.user.role === 'INSURED') {
+        return {
+          ...inc,
+          where: { insured_user_id: req.user.id },
+          required: true
+        }
+      }
+      return inc
+    })
+
     const { rows, count } = await SinisterFolder.findAndCountAll({
       where,
-      include: folderIncludeList,
+      include,
       limit,
       offset,
       order: [['created_at', 'DESC']]
@@ -136,6 +149,15 @@ const getFolder = async (req, res) => {
         message: 'Dossier introuvable',
         code: ERROR_CODES.NOT_FOUND.code
       })
+    }
+    if (req.user.role === 'INSURED') {
+      const s = folder.sinister
+      if (!s || s.insured_user_id !== req.user.id) {
+        return res.status(ERROR_CODES.NOT_FOUND.status).json({
+          message: 'Dossier introuvable',
+          code: ERROR_CODES.NOT_FOUND.code
+        })
+      }
     }
     return res.status(200).json({ data: folder })
   } catch (err) {
@@ -300,6 +322,85 @@ const assignOfficer = async (req, res) => {
   }
 }
 
+/**
+ * Premier choix de scénario sur un dossier sans `scenario` (ex. dossier créé sans scénario).
+ * Rôles : ADMIN, PORTFOLIO_MANAGER ; ou TRACKING_OFFICER si dossier assigné à l’utilisateur.
+ */
+const updateFolderScenario = async (req, res) => {
+  const transaction = await dbInstance.transaction()
+  try {
+    const folderId = req.params.id
+    const { scenario } = req.body
+
+    const folder = await SinisterFolder.findByPk(folderId, { transaction })
+    if (!folder) {
+      await transaction.rollback()
+      return res.status(ERROR_CODES.NOT_FOUND.status).json({
+        message: 'Dossier introuvable',
+        code: ERROR_CODES.NOT_FOUND.code
+      })
+    }
+
+    if (folder.is_closed) {
+      await transaction.rollback()
+      return res.status(ERROR_CODES.UNPROCESSABLE_ENTITY.status).json({
+        message: 'Dossier clôturé : modification du scénario impossible',
+        code: ERROR_CODES.UNPROCESSABLE_ENTITY.code
+      })
+    }
+
+    if (req.user.role === 'TRACKING_OFFICER') {
+      if (folder.assigned_officer_id !== req.user.id) {
+        await transaction.rollback()
+        return res.status(ERROR_CODES.FORBIDDEN.status).json({
+          message: 'Réservé au chargé de suivi assigné à ce dossier',
+          code: ERROR_CODES.FORBIDDEN.code
+        })
+      }
+    } else if (!['ADMIN', 'PORTFOLIO_MANAGER'].includes(req.user.role)) {
+      await transaction.rollback()
+      return res.status(ERROR_CODES.FORBIDDEN.status).json({
+        message: 'Accès refusé',
+        code: ERROR_CODES.FORBIDDEN.code
+      })
+    }
+
+    if (folder.scenario != null) {
+      await transaction.rollback()
+      return res.status(ERROR_CODES.UNPROCESSABLE_ENTITY.status).json({
+        message: 'Le scénario du dossier est déjà défini',
+        code: ERROR_CODES.UNPROCESSABLE_ENTITY.code
+      })
+    }
+
+    await folder.update({ scenario }, { transaction })
+    await transaction.commit()
+
+    const full = await SinisterFolder.findByPk(folderId, {
+      include: folderIncludeDetail
+    })
+    await recordHistory({
+      userId: req.user.id,
+      entityType: 'folder',
+      entityId: Number(folderId),
+      action: HISTORY_ACTION.FOLDER_SCENARIO_SET
+    })
+    return res.status(200).json({ data: full })
+  } catch (err) {
+    await transaction.rollback()
+    if (err instanceof AppError) {
+      return res.status(err.statusCode).json({
+        message: err.message,
+        code: err.code
+      })
+    }
+    return logError(res, err, {
+      context: 'folders.updateFolderScenario',
+      defaultMessage: 'Erreur lors de la mise à jour du scénario'
+    })
+  }
+}
+
 const closeFolder = async (req, res) => {
   const transaction = await dbInstance.transaction()
   try {
@@ -372,5 +473,6 @@ module.exports = {
   getFolder,
   createFolder,
   assignOfficer,
+  updateFolderScenario,
   closeFolder
 }

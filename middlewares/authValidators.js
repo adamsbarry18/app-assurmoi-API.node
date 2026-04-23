@@ -1,4 +1,4 @@
-const { body, validationResult } = require('express-validator')
+const { body, param, validationResult } = require('express-validator')
 const userModelModule = require('../models/user')
 const { ERROR_CODES } = require('../core/errors')
 const USER_ROLES = userModelModule.USER_ROLES
@@ -55,11 +55,17 @@ const completeInviteValidators = [
   handleValidationErrors
 ]
 
+const invitationIdParamValidators = [
+  param('id').isInt({ min: 1 }).toInt(),
+  handleValidationErrors
+]
+
 module.exports = {
   loginValidators,
   refreshValidators,
   forgotPasswordValidators,
   resetPasswordValidators,
   inviteValidators,
-  completeInviteValidators
+  completeInviteValidators,
+  invitationIdParamValidators
 }

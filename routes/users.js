@@ -5,14 +5,18 @@ const {
   createUserValidators,
   updateUserValidators,
   idParamValidator,
-  listUsersQueryValidators
+  listUsersQueryValidators,
+  listInsuredOptionsQueryValidators
 } = require('../middlewares/users')
 const {
   getAllUsers,
   getUser,
+  listInsuredOptions,
+  listTrackingOfficerOptions,
   createUser,
   updateUser,
   deactivateUser,
+  activateUser,
   deleteUser
 } = require('../services/users')
 
@@ -30,6 +34,20 @@ router.post(
   createUserValidators,
   createUser
 )
+router.get(
+  '/insured-options',
+  authenticate,
+  requireRoles('ADMIN', 'PORTFOLIO_MANAGER', 'CUSTOMER_OFFICER'),
+  listInsuredOptionsQueryValidators,
+  listInsuredOptions
+)
+router.get(
+  '/tracking-officer-options',
+  authenticate,
+  requireRoles('ADMIN', 'PORTFOLIO_MANAGER'),
+  listInsuredOptionsQueryValidators,
+  listTrackingOfficerOptions
+)
 router.get('/:id', authenticate, idParamValidator, getUser)
 router.put('/:id', authenticate, updateUserValidators, updateUser)
 router.patch(
@@ -38,6 +56,13 @@ router.patch(
   requireRoles('ADMIN'),
   idParamValidator,
   deactivateUser
+)
+router.patch(
+  '/:id/activate',
+  authenticate,
+  requireRoles('ADMIN'),
+  idParamValidator,
+  activateUser
 )
 router.delete(
   '/:id',

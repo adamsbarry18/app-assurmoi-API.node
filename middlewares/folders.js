@@ -41,9 +41,16 @@ const assignOfficerValidators = [
   handleValidationErrors
 ]
 
+const updateFolderScenarioValidators = [
+  param('id').isInt({ min: 1 }).toInt(),
+  body('scenario').isIn([...FOLDER_SCENARIOS]),
+  handleValidationErrors
+]
+
 module.exports = {
   listFoldersQueryValidators,
   folderIdParamValidator,
   createFolderValidators,
-  assignOfficerValidators
+  assignOfficerValidators,
+  updateFolderScenarioValidators
 }

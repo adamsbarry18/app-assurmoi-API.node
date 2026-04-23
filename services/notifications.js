@@ -68,7 +68,28 @@ const markNotificationRead = async (req, res) => {
   }
 }
 
+/**
+ * Marque toutes les notifications non lues de l’utilisateur courant comme lues.
+ */
+const markAllMyNotificationsRead = async (req, res) => {
+  try {
+    const [updated] = await Notification.update(
+      { is_read: true },
+      { where: { user_id: req.user.id, is_read: false } }
+    )
+    return res.status(200).json({
+      data: { updated: Number(updated) || 0 }
+    })
+  } catch (err) {
+    return logError(res, err, {
+      context: 'notifications.markAllMyNotificationsRead',
+      defaultMessage: 'Erreur lors de la mise à jour groupée'
+    })
+  }
+}
+
 module.exports = {
   listMyNotifications,
-  markNotificationRead
+  markNotificationRead,
+  markAllMyNotificationsRead
 }
