@@ -67,7 +67,7 @@ YOUSIGN_API_KEY=
 # YOUSIGN_BASE_URL=https://api-sandbox.yousign.app/v3
 ```
 
-Puis exécuter les migrations (voir plus bas).
+Puis exécuter les **migrations** et éventuellement les **seeders** (voir [Base de données](#base-de-données-sequelize)).
 
 ---
 
@@ -90,7 +90,7 @@ docker compose up -d --build
 ```
 
 - API : **http://localhost:3000**
-- Metro (Expo) : **http://localhost:8081** — pour ouvrir l’app sur un téléphone / émulateur, suivre le flux [Expo](https://reactnative.dev/docs/environment-setup) (Expo Go, QR code, etc.). Le conteneur mobile monte le dossier `APP-ASSURMOI-MOBILE` : les changements de code sont pris en compte côté hôte. Si `node_modules` posent problème (binaires macOS vs Linux), lancer `docker compose run --rm app-assurmoi-mobile npm install` une fois, ou préférer l’Expo en **local** (voir ci-dessous).
+- Metro (Expo) : **http://localhost:8081** — pour ouvrir l’app sur un téléphone / émulateur, suivre le flux [Expo](https://reactnative.dev/docs/environment-setup) (Expo Go, QR code, etc.). Le conteneur mobile monte le dossier **`app-assurmoi-mobile/`** (dépôt miroir) ; selon le `docker-compose`, le nom de volume peut être `APP-ASSURMOI-MOBILE` : les changements de code sont pris en compte côté hôte. Si `node_modules` posent problème (binaires macOS vs Linux), lancer `docker compose run --rm app-assurmoi-mobile npm install` une fois, ou préférer l’Expo en **local** (voir ci-dessous).
 
 **API + services de données uniquement** (pas de conteneur Expo) — utile si vous lancez le mobile sur la machine hôte (`npm start` dans `APP-ASSURMOI-MOBILE`) :
 
@@ -115,18 +115,18 @@ npm start
 **Mobile (Expo) sans Docker** — démarrer l’API (Docker ou `npm run dev`) puis, dans un autre terminal :
 
 ```bash
-cd APP-ASSURMOI-MOBILE
+cd app-assurmoi-mobile
 npm install
 npm start
 ```
 
-Côté app, copier `APP-ASSURMOI-MOBILE/.env.example` vers `.env` et définir si besoin **`EXPO_PUBLIC_API_URL`**. **Expo Web** (navigateur sur le même poste que l’API Docker) : utiliser **`http://localhost:3000`**, pas une IP LAN — sinon le navigateur peut afficher « Failed to fetch » (même si l’API répond). Téléphone sur le Wi‑Fi : `http://192.168.x.x:3000`. Par défaut sans variable : simulateur iOS / web → `localhost:3000` ; émulateur Android → `10.0.2.2:3000`. En **développement**, l’API accepte toute origine CORS (`origin: true`) pour faciliter Expo ; en **production**, renseigner **`CORS_ALLOWED_ORIGINS`** dans l’`.env` du serveur (voir `.env.example` à la racine).
+Côté app, copier `app-assurmoi-mobile/.env.example` vers `.env` et définir si besoin **`EXPO_PUBLIC_API_URL`**. **Expo Web** (navigateur sur le même poste que l’API Docker) : utiliser **`http://localhost:3000`**, pas une IP LAN — sinon le navigateur peut afficher « Failed to fetch » (même si l’API répond). Téléphone sur le Wi‑Fi : `http://192.168.x.x:3000`. Par défaut sans variable : simulateur iOS / web → `localhost:3000` ; émulateur Android → `10.0.2.2:3000`. En **développement**, l’API accepte toute origine CORS (`origin: true`) pour faciliter Expo ; en **production**, renseigner **`CORS_ALLOWED_ORIGINS`** dans l’`.env` du serveur (voir `.env.example` à la racine).
 
 **Authentification mobile** : écran de **connexion** (identifiants alignés sur `POST /api/auth/login` : e-mail ou nom d’utilisateur + mot de passe), **jetons** stockés via **expo-secure-store**, rafraîchissement via `POST /api/auth/refresh`, **déconnexion** via `POST /api/auth/logout`, profil `GET /api/auth/me`, mot de passe oublié `POST /api/auth/forgot-password`. Après login, l’**accueil** affiche le profil, `GET /` (état de l’API) et les liens utiles. UI : [React Native Paper](https://reactnativepaper.com/) (thème type applications assurance) + [Safe Area](https://github.com/react-native/safe-area-context).
 
-**Arborescence mobile (`app-assurmoi-mobile/`)** : tout le code applicatif est sous **`src/`** (alias `@/*`). Notamment : `src/app/` = routes Expo Router ; `src/api/` = client HTTP + modules `*.api.ts` (sinistres, dossiers, documents, etc.) ; `src/auth/` = session & stockage des jetons ; `src/types/` = types partagés ; `src/utils/` = helpers ; `src/components/` (ex. `common/`, `dashboard/`, `notifications/`) ; `src/constants/`, `src/theme/`. Dossiers réservés : `src/store/`, `src/hooks/`, `src/navigation/`, `src/components/forms/`, `src/components/folders/`.
+**Arborescence mobile (`app-assurmoi-mobile/`, clone séparé ou sous-dossier du monorepo)** : tout le code applicatif est sous **`src/`** (alias `@/*`). Notamment : `src/app/` = routes Expo Router ; `src/api/` = client HTTP + modules `*.api.ts` (sinistres, dossiers, documents, etc.) ; `src/auth/` = session & stockage des jetons ; `src/types/` = types partagés ; `src/utils/` = helpers ; `src/components/` (ex. `common/`, `dashboard/`, `notifications/`) ; `src/constants/`, `src/theme/`. Dossiers réservés : `src/store/`, `src/hooks/`, `src/navigation/`, `src/components/forms/`, `src/components/folders/`.
 
-**Appels API authentifiés** : `apiFetchWithAuth` (`lib/api.ts`) ajoute `Authorization: Bearer` à partir de **expo-secure-store** (mêmes jetons que le contexte) ; en cas de **401**, un **refresh** des jetons est tenté une fois. Les routes publiques restent sur `apiFetch` (ex. `GET /`).
+**Appels API authentifiés** : `apiFetchWithAuth` (depuis `@/api/client` ou l’entrée unique `@/api`) ajoute `Authorization: Bearer` à partir de **expo-secure-store** (mêmes jetons que le contexte) ; en cas de **401**, un **refresh** des jetons est tenté une fois. Les routes publiques restent sur `apiFetch` (ex. `GET /`).
 
 Le dossier **`app-example/`** est l’ancienne démo Expo (après `reset-project`) : vous pouvez le supprimer quand il ne sert plus.
 
@@ -162,15 +162,28 @@ Flux typique **signature** : `POST /api/documents` (multipart) → `PATCH /api/d
 
 ## Base de données (Sequelize)
 
-Scripts npm :
+Les commandes d’orchestration passent par **Docker** (`app-assurmoi-node` charge le `.env` et exécute `sequelize-cli` avec la config `src/config/config.js`) — pratique lorsque la base tourne déjà en conteneur. Avec **MariaDB en local** (hôte) et l’API lancée par `npm run dev` sur la même machine, utilisez les variantes **`:local`**.
 
-```bash
-npm run db:migrate        # appliquer les migrations
-npm run db:migrate:undo   # annuler la dernière migration
-npm run db:seed           # exécuter les seeders
-```
+| Script | Rôle |
+|--------|------|
+| `npm run db:migrate` | Applique toutes les migrations (Docker). |
+| `npm run db:migrate:undo` | Annule la dernière migration (Docker). |
+| `npm run db:seed` | Exécute tous les seeders (Docker) — `db:seed:all`. |
+| `npm run db:seed:undo` | Annule le **dernier** seeder exécuté. |
+| `npm run db:seed:undo:all` | Annule **tous** les seeders (ordre inverse). |
+| `npm run db:migrate:local` | Migrations, Sequelize-CLI sur l’hôte. |
+| `npm run db:migrate:undo:local` | Undo dernière migration (hôte). |
+| `npm run db:seed:local` | Seeders (hôte). |
+| `npm run db:seed:undo:local` / `db:seed:undo:all:local` | Undo seeders (hôte). |
 
-Création d’une nouvelle migration (avec `sequelize-cli` en devDependency) :
+**Ordre conseillé (premier démarrage)** : `db:migrate` → `db:seed`.
+
+**Contenu des seeders** (développement) :
+
+- `src/database/seeders/20260324130823-user.js` : un compte **ADMIN** existant (identifiants historiques du projet).
+- `src/database/seeders/20260430120000-dev-users-roles-sinistres.js` : comptes **`seed.*`** (un rôle chacun), **documents**, **sinistres**, **dossier**, **étape**, **historique**, **notifications**, **invitation** en attente. Mot de passe commun par défaut : `MotDeP@ss123` (surcharge : variable **`SEED_DEV_PASSWORD`** dans `.env` — voir `.env.example`). Le seeder est **idempotent** : s’il détecte déjà `seed.admin`, il ne réinsère pas (utiliser `db:seed:undo:all` puis `db:seed` pour repartir de zéro sur les données de démo).
+
+Générer une nouvelle migration :
 
 ```bash
 npx sequelize-cli migration:generate --name ma-migration
@@ -238,7 +251,8 @@ Les fichiers uploadés sont stockés sous **`UPLOAD_DIR`** (défaut : `./uploads
 Liste détaillée et commentaires : **`.env.example`**. Notamment :
 
 - **JWT** : `JWT_SECRET` (minimum 16 caractères), durées d’expiration, `PUBLIC_APP_URL` pour les liens dans les e-mails.
-- **Base** : `DB_USERNAME`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`, `DB_NAME`.
+- **Base** : `DB_USERNAME`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`, `DB_NAME` ; en local sans SSL MariaDB, **`DB_SSL=false`** (voir `.env.example`).
+- **Seed (développement)** : `SEED_DEV_PASSWORD` (optionnel) pour le jeu de comptes `seed.*` et les données associées.
 - **Fichiers** : `UPLOAD_DIR`, `UPLOAD_MAX_BYTES`.
 - **E-mail** : `MAIL_BACKEND` (`console` ou SMTP), `SMTP_*`, `MAIL_FROM`.
 - **Yousign** : `YOUSIGN_API_KEY`, `YOUSIGN_BASE_URL` (sandbox vs production).

@@ -1,7 +1,7 @@
 {
   "name": "app-assurmoi-api",
   "version": "1.0.0",
-  "description": "App Assurmoi API",
+  "description": "API REST AssurMoi — Express, Sequelize, MariaDB (sinistres, dossiers, documents, Yousign, audit, notifications).",
   "license": "ISC",
   "author": "Mamadou Barry <mabarry2018@gmail.com>",
   "type": "commonjs",
@@ -14,11 +14,15 @@
     "docker:up:api": "docker compose up app-assurmoi-node app-assurmoi-mailhog app-assurmoi-db app-assurmoi-adminer",
     "docker:up:api:build": "docker compose up --build app-assurmoi-node app-assurmoi-mailhog app-assurmoi-db app-assurmoi-adminer",
     "db:migrate": "docker compose run app-assurmoi-node npx sequelize-cli db:migrate",
-    "db:migrate:undo": "docker compose run app-assurmoi-node sequelize db:migrate:undo",
+    "db:migrate:undo": "docker compose run app-assurmoi-node npx sequelize-cli db:migrate:undo",
     "db:seed": "docker compose run app-assurmoi-node npx sequelize-cli db:seed:all",
-    "db:seed:docker": "docker compose run app-assurmoi-node npx sequelize-cli db:seed:all",
     "db:seed:undo": "docker compose run app-assurmoi-node npx sequelize-cli db:seed:undo",
-    "db:seed:undo:all": "docker compose run app-assurmoi-node npx sequelize-cli db:seed:undo:all"
+    "db:seed:undo:all": "docker compose run app-assurmoi-node npx sequelize-cli db:seed:undo:all",
+    "db:migrate:local": "npx sequelize-cli db:migrate",
+    "db:migrate:undo:local": "npx sequelize-cli db:migrate:undo",
+    "db:seed:local": "npx sequelize-cli db:seed:all",
+    "db:seed:undo:local": "npx sequelize-cli db:seed:undo",
+    "db:seed:undo:all:local": "npx sequelize-cli db:seed:undo:all"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
