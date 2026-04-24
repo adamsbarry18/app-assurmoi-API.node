@@ -14,7 +14,11 @@
     "docker:up:api": "docker compose up app-assurmoi-node app-assurmoi-mailhog app-assurmoi-db app-assurmoi-adminer",
     "docker:up:api:build": "docker compose up --build app-assurmoi-node app-assurmoi-mailhog app-assurmoi-db app-assurmoi-adminer",
     "db:migrate": "docker compose run app-assurmoi-node npx sequelize-cli db:migrate",
-    "db:migrate:undo": "sequelize db:migrate:undo"
+    "db:migrate:undo": "docker compose run app-assurmoi-node sequelize db:migrate:undo",
+    "db:seed": "docker compose run app-assurmoi-node npx sequelize-cli db:seed:all",
+    "db:seed:docker": "docker compose run app-assurmoi-node npx sequelize-cli db:seed:all",
+    "db:seed:undo": "docker compose run app-assurmoi-node npx sequelize-cli db:seed:undo",
+    "db:seed:undo:all": "docker compose run app-assurmoi-node npx sequelize-cli db:seed:undo:all"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
