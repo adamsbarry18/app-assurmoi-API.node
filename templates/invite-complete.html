@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Finaliser votre inscription — AssurMoi</title>
+  <title>Invitation AssurMoi — activer le compte</title>
   <style>
     :root { --bg: #0f172a; --card: #fff; --primary: #00695c; --err: #b71c1c; --muted: #64748b; }
     * { box-sizing: border-box; }
@@ -26,8 +26,8 @@
 <body>
   <div class="card">
     <div id="intro">
-      <h1>Créer votre compte</h1>
-      <p class="lead">Complétez votre profil pour activer l’accès AssurMoi. Le mot de passe définit ici est celui de votre compte.</p>
+      <h1>Activer votre accès</h1>
+      <p class="lead">Vous avez été invité par l’équipe AssurMoi. Choisissez un identifiant et un mot de passe pour ce compte.</p>
     </div>
     <div id="msg" class="msg" role="alert"></div>
     <form id="form" style="display: none;">
@@ -41,7 +41,7 @@
       <input id="password" name="password" type="password" required minlength="8" autocomplete="new-password" />
       <label for="password2">Confirmer le mot de passe</label>
       <input id="password2" name="password2" type="password" required minlength="8" autocomplete="new-password" />
-      <button type="submit" id="btn">Valider mon inscription</button>
+      <button type="submit" id="btn">Valider et activer le compte</button>
     </form>
     <p id="no-token" class="token-missing" style="display: none;">Lien incomplet ou expiré : aucun jeton d’invitation dans l’URL. Ouvrez le lien reçu par e-mail.</p>
   </div>
@@ -96,7 +96,7 @@
               if (intro) intro.style.display = 'none'
               form.style.display = 'none'
               showOk(
-                'Votre compte est activé. Vous avez bien finalisé votre enregistrement.',
+                'Votre compte est activé. Vous pouvez vous connecter à l’application.',
                 true
               )
             } else {

@@ -111,6 +111,29 @@ async function mailInvitation ({ email, role, link }) {
   })
 }
 
+/** Compte assuré créé par l’entreprise : même mécanisme technique que la réinitialisation (token). */
+async function mailInsuredFirstAccess (user, webLink, mobileLink) {
+  const name = [user.first_name, user.last_name].filter(Boolean).join(' ')
+  const to = name ? `${name} <${user.email}>` : user.email
+  const greeting = user.first_name ? `Bonjour ${user.first_name}` : 'Bonjour'
+
+  const textBody = mobileLink
+    ? `${greeting},\n\nVotre espace AssurMoi est prêt. Définissez votre mot de passe pour vous connecter.\n\nNavigateur : ${webLink}\n\nApplication mobile : ${mobileLink}\n\nCes liens expirent sous peu.`
+    : `${greeting},\n\nVotre espace AssurMoi est prêt. Définissez votre mot de passe : ${webLink}\n\nCe lien expire sous peu.`
+
+  const htmlBody = mobileLink
+    ? `<p>${greeting},</p><p>Votre compte assuré a été créé. Choisissez un mot de passe pour accéder à votre espace.</p><p>Navigateur : <a href="${webLink}">Définir mon mot de passe</a></p><p>Application mobile : <a href="${mobileLink}">Ouvrir dans l’app</a></p><p><small>Liens à usage unique / durée limitée.</small></p>`
+    : `<p>${greeting},</p><p><a href="${webLink}">Définir mon mot de passe</a></p><p><small>Ce lien expire sous peu.</small></p>`
+
+  return sendMail({
+    from: process.env.MAIL_FROM,
+    to,
+    subject: 'AssurMoi — votre compte assuré (définir le mot de passe)',
+    text: textBody,
+    html: htmlBody
+  })
+}
+
 async function mailLogin (user) {
   const name = [user.first_name, user.last_name].filter(Boolean).join(' ')
   const to = name ? `${name} <${user.email}>` : user.email
@@ -135,5 +158,6 @@ module.exports = {
   sendMail,
   mailLogin,
   mailForgotPassword,
-  mailInvitation
+  mailInvitation,
+  mailInsuredFirstAccess
 }

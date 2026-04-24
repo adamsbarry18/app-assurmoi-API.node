@@ -139,7 +139,15 @@ paths:
   /api/auth/invite:
     post:
       tags: [Authentification]
-      summary: Envoyer une invitation (ADMIN)
+      summary: Envoyer une invitation
+      description: |
+        Rôles : **ADMIN**, **PORTFOLIO_MANAGER**, **CUSTOMER_OFFICER**.
+
+        Le rôle cible (`role` dans le corps) peut être **n’importe lequel** des rôles applicatifs
+        (y compris assuré) : l’invité finalise via `GET …/invite?token=…` et `POST /api/auth/complete-invite`.
+
+        Pour une **fiche assuré** liée à un contrat sans parcours « invitation libre »,
+        préférer `POST /api/users/insured-provision` (profil renseigné + e-mail mot de passe).
       security:
         - bearerAuth: []
       requestBody:
@@ -208,6 +216,14 @@ paths:
     get:
       tags: [Utilisateurs]
       summary: Liste des utilisateurs
+      description: |
+        Rôles : **ADMIN**, **PORTFOLIO_MANAGER**, **CHARGé_DE_CLIENTELE** (CUSTOMER_OFFICER) — annuaire
+        opérationnel (invitations, fiches assurés). La création / désactivation / suppression reste
+        réservée à l’admin sur les routes dédiées.
+
+        Filtrage par liste : `user_scope=insured` (assurés uniquement) ou `user_scope=staff`
+        (ADMIN, gestionnaires, chargés de suivi et de clientèle — hors assurés). Si ce paramètre est
+        défini, il prime sur `role` pour le périmètre.
       security:
         - bearerAuth: []
       operationId: listUsers
@@ -215,6 +231,12 @@ paths:
         - name: search
           in: query
           schema: { type: string, maxLength: 255 }
+        - name: user_scope
+          in: query
+          description: Liste assurés ou liste équipe (gestionnaires)
+          schema:
+            type: string
+            enum: [insured, staff]
         - name: role
           in: query
           schema:
@@ -238,12 +260,15 @@ paths:
                 $ref: '#/components/schemas/UserListResponse'
         '400':
           $ref: '#/components/responses/ValidationError'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalError'
 
     post:
       tags: [Utilisateurs]
       summary: Créer un utilisateur
+      description: Réservé au rôle **ADMIN** (compte complet avec mot de passe).
       security:
         - bearerAuth: []
       operationId: createUser
@@ -266,6 +291,85 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorMessage'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/users/insured-provision:
+    post:
+      tags: [Utilisateurs]
+      summary: Créer un compte assuré (profil + option e-mail premier accès)
+      description: |
+        Rôles : ADMIN, PORTFOLIO_MANAGER, CUSTOMER_OFFICER.
+
+        Crée un utilisateur **INSURED** avec identité renseignée ; le mot de passe provisoire est aléatoire.
+        **E-mail** : si `send_welcome_email` vaut `true`, un message part avec le lien de définition
+        de mot de passe (même flux que la réinitialisation). Par défaut (`false` ou omis) **aucun**
+        e-mail n’est envoyé : utilisez `POST /api/users/{id}/resend-welcome` lorsque l’assuré doit
+        accéder à l’espace.
+
+        Tant que le mot de passe n’est pas défini, `password_pending` est `true` et la connexion par mot de passe est refusée (message explicite).
+      security:
+        - bearerAuth: []
+      operationId: provisionInsuredUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserInsuredProvision'
+      responses:
+        '201':
+          description: Compte créé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  data:
+                    $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/users/{id}/resend-welcome:
+    post:
+      tags: [Utilisateurs]
+      summary: Renvoyer l’e-mail de premier accès (assuré)
+      description: |
+        Rôles : **ADMIN**, **PORTFOLIO_MANAGER**, **CUSTOMER_OFFICER**.
+        Uniquement si le compte est **INSURED** et `password_pending` est true.
+      security:
+        - bearerAuth: []
+      operationId: resendInsuredWelcome
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
         '500':
           $ref: '#/components/responses/InternalError'
 
@@ -335,6 +439,9 @@ paths:
     get:
       tags: [Utilisateurs]
       summary: Détail utilisateur
+      description: |
+        Consultation autorisée pour **soi-même**, ou pour **ADMIN / Gestionnaire / Chargé de clientèle**
+        (même périmètre que l’annuaire `GET /api/users`).
       security:
         - bearerAuth: []
       operationId: getUserById
@@ -348,6 +455,8 @@ paths:
                 $ref: '#/components/schemas/UserSingleResponse'
         '400':
           $ref: '#/components/responses/ValidationError'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
         '500':
@@ -493,8 +602,13 @@ paths:
       tags: [Sinistres]
       summary: Créer un sinistre
       description: |
-        Rôles : CUSTOMER_OFFICER, PORTFOLIO_MANAGER, ADMIN.
+        Rôles : CUSTOMER_OFFICER, PORTFOLIO_MANAGER, ADMIN, **INSURED** (déclaration assuré).
+
+        **Assuré** : `insured_user_id` est ignoré ; le sinistre est rattaché au compte connecté.
+        Collègues : peuvent renseigner `insured_user_id` (compte assuré actif ayant défini son mot de passe).
+
         Les IDs de pièces (`cni_driver`, etc.) doivent référencer des documents du type attendu (CNI → ID_CARD, …).
+        Toute création reste soumise à **validation gestionnaire** (`is_validated_by_manager`).
       security:
         - bearerAuth: []
       operationId: createSinister
@@ -1276,8 +1390,24 @@ components:
         role:
           $ref: '#/components/schemas/UserRole'
         is_active: { type: boolean }
+        password_pending:
+          type: boolean
+          description: True tant que l’assuré n’a pas défini son mot de passe (compte provisionné par l’entreprise).
         created_at: { type: string, format: date-time, nullable: true }
         updated_at: { type: string, format: date-time, nullable: true }
+
+    UserInsuredProvision:
+      type: object
+      required: [username, email]
+      properties:
+        username: { type: string, maxLength: 255 }
+        email: { type: string, format: email }
+        first_name: { type: string, maxLength: 255 }
+        last_name: { type: string, maxLength: 255 }
+        send_welcome_email:
+          type: boolean
+          default: false
+          description: Si `true`, envoie l’e-mail de premier accès. Sinon, création seule.
 
     UserCreate:
       type: object

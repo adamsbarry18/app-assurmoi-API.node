@@ -72,6 +72,12 @@ const User = (sequelize, DataTypes) => {
         type: DataTypes.BOOLEAN,
         allowNull: false,
         defaultValue: true
+      },
+      /** true tant que l’assuré n’a pas défini son mot de passe (lien e-mail, premier accès) */
+      password_pending: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false
       }
     },
     {

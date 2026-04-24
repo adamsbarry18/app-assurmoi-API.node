@@ -11,9 +11,9 @@ const logger = require('../core/logger')
 const templatesDir = path.join(__dirname, '..', 'templates')
 
 function initRoutes (app) {
-  /** Pages HTML (liens e-mail : invitation, reset mot de passe) — voir /templates */
-  app.get('/register', (req, res) => {
-    res.sendFile(path.join(templatesDir, 'register.html'))
+  /** Pages HTML (liens e-mail : invitation collaborateurs, reset mot de passe) — voir /templates */
+  app.get('/invite', (req, res) => {
+    res.sendFile(path.join(templatesDir, 'invite-complete.html'))
   })
   app.get('/reset-password', (req, res) => {
     res.sendFile(path.join(templatesDir, 'reset-password.html'))

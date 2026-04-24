@@ -89,6 +89,13 @@ Nous identifierons les notions suivantes dans le processus à digitaliser :
                     - Refacturation au prorata de l’indemnisation à l’assurance tiers.
                         - *(champ : facture réglée par l’assurance tiers à cocher pour valider cette étape)*
 
+### Comptes assurés (workflow métier)
+
+- Les **assurés ne s’inscrivent pas eux-mêmes** : un compte au rôle `INSURED` est créé par l’entreprise (administrateur ou rôle habilité), avec identité de base (nom, prénom, e-mail, identifiant de connexion).
+- Un **e-mail** est envoyé pour **définir le mot de passe** (premier accès, même mécanisme que la réinitialisation). Tant que le mot de passe n’est pas posé, le compte reste en attente côté API (`password_pending`).
+- Aucun parcours d’« inscription complémentaire » n’est requis pour l’assuré au-delà de ce choix de mot de passe.
+- Connecté, l’assuré **consulte / met à jour** des informations de profil autorisées, **gère des documents** et **déclare un sinistre** ; chaque sinistre est **soumis à validation** par un gestionnaire (voir `is_validated_by_manager` côté API).
+
 Caractéristiques générales complémentaires de l’application :
 
 - AssurMoi possède **des utilisateurs avec différents rôles** :

@@ -236,9 +236,12 @@ const createSinister = async (req, res) => {
       insurance_certificate_id: insuranceCertificateId
     } = req.body
 
-    const insuredUserId = await resolveInsuredUserId(req.body.insured_user_id, {
+    let insuredUserId = await resolveInsuredUserId(req.body.insured_user_id, {
       transaction
     })
+    if (req.user.role === 'INSURED') {
+      insuredUserId = req.user.id
+    }
 
     const created = await Sinister.create(
       {

@@ -21,6 +21,7 @@ CREATE TABLE users (
     refresh_token TEXT,
     two_factor_code VARCHAR(255),
     is_active BOOLEAN DEFAULT TRUE,
+    password_pending BOOLEAN NOT NULL DEFAULT FALSE,
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NULL ON UPDATE CURRENT_TIMESTAMP

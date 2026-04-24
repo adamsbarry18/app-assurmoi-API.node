@@ -32,6 +32,13 @@ const login = async (req, res) => {
     }
     const match = await bcrypt.compare(password, user.password_hash)
     if (!match) {
+      if (user.password_pending) {
+        return res.status(ERROR_CODES.UNAUTHORIZED.status).json({
+          message:
+            'Compte en attente : définissez votre mot de passe via le lien envoyé par e-mail (premier accès).',
+          code: ERROR_CODES.UNAUTHORIZED.code
+        })
+      }
       return res.status(ERROR_CODES.UNAUTHORIZED.status).json({
         message: 'Identifiants invalides',
         code: ERROR_CODES.UNAUTHORIZED.code
@@ -197,7 +204,7 @@ const resetPassword = async (req, res) => {
       })
     }
     const password_hash = await hashPassword(password)
-    await user.update({ password_hash, refresh_token: null })
+    await user.update({ password_hash, refresh_token: null, password_pending: false })
     return res.status(200).json({ message: 'Mot de passe mis à jour' })
   } catch (err) {
     return logError(res, err, {
@@ -239,7 +246,7 @@ const sendInvitation = async (req, res) => {
       /\/$/,
       ''
     )
-    const link = `${base}/register?token=${encodeURIComponent(inviteToken)}`
+    const link = `${base}/invite?token=${encodeURIComponent(inviteToken)}`
     try {
       await mailInvitation({ email, role, link })
     } catch (mailErr) {
@@ -284,7 +291,7 @@ const resendInvitation = async (req, res) => {
       /\/$/,
       ''
     )
-    const link = `${base}/register?token=${encodeURIComponent(inviteToken)}`
+    const link = `${base}/invite?token=${encodeURIComponent(inviteToken)}`
     await mailInvitation({ email, role, link })
     return res.status(200).json({ message: 'Invitation renvoyée' })
   } catch (err) {

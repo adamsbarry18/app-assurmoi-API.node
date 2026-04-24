@@ -23,6 +23,9 @@ const {
   completeInvite
 } = require('../services/auth')
 
+/** Invitation (tous rôles cibles) : back-office habilité — aligné contrat / provision assuré. */
+const ROLES_CAN_MANAGE_INVITATIONS = ['ADMIN', 'PORTFOLIO_MANAGER', 'CUSTOMER_OFFICER']
+
 router.post('/login', loginValidators, login)
 router.post('/refresh', refreshValidators, refresh)
 router.post('/logout', authenticate, logout)
@@ -32,21 +35,21 @@ router.post('/reset-password', resetPasswordValidators, resetPassword)
 router.post(
   '/invite',
   authenticate,
-  requireRoles('ADMIN'),
+  requireRoles(...ROLES_CAN_MANAGE_INVITATIONS),
   inviteValidators,
   sendInvitation
 )
 router.post(
   '/invitations/:id/resend',
   authenticate,
-  requireRoles('ADMIN'),
+  requireRoles(...ROLES_CAN_MANAGE_INVITATIONS),
   invitationIdParamValidators,
   resendInvitation
 )
 router.post(
   '/invitations/:id/cancel',
   authenticate,
-  requireRoles('ADMIN'),
+  requireRoles(...ROLES_CAN_MANAGE_INVITATIONS),
   invitationIdParamValidators,
   cancelInvitation
 )

@@ -45,6 +45,7 @@ const idParamValidator = [
 
 const listUsersQueryValidators = [
   query('search').optional().trim().isLength({ max: 255 }),
+  query('user_scope').optional().isIn(['insured', 'staff']),
   query('role').optional().isIn([...USER_ROLES]),
   query('is_active').optional().isIn(['true', 'false']),
   query('limit').optional().isInt({ min: 1, max: 100 }).toInt(),
@@ -58,8 +59,19 @@ const listInsuredOptionsQueryValidators = [
   handleValidationErrors
 ]
 
+/** Création profil assuré par l’équipe (sans mot de passe ; e-mail premier accès). */
+const provisionInsuredUserValidators = [
+  body('username').trim().notEmpty().isLength({ max: 255 }),
+  body('email').trim().isEmail().normalizeEmail(),
+  body('first_name').optional({ values: 'null' }).trim().isLength({ max: 255 }),
+  body('last_name').optional({ values: 'null' }).trim().isLength({ max: 255 }),
+  body('send_welcome_email').optional().isBoolean(),
+  handleValidationErrors
+]
+
 module.exports = {
   createUserValidators,
+  provisionInsuredUserValidators,
   updateUserValidators,
   idParamValidator,
   listUsersQueryValidators,
