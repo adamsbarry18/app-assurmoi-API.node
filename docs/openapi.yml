@@ -735,6 +735,7 @@ paths:
         **Assuré** : seul le type `RIB` est autorisé.
         Corps `multipart/form-data` : champ fichier `file`, champ texte `type` (enum).
         Taille max configurable (`UPLOAD_MAX_BYTES`, défaut 15 Mo). Types MIME autorisés : PDF, PNG, JPEG, GIF, WebP, texte brut.
+        Analyse du corps : **formidable** (fichier écrit sur disque puis enregistrement BDD).
       security:
         - bearerAuth: []
       operationId: uploadDocument
