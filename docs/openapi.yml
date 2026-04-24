@@ -732,7 +732,7 @@ paths:
       summary: Uploader un document
       description: |
         Rôles : ADMIN, PORTFOLIO_MANAGER, CUSTOMER_OFFICER, TRACKING_OFFICER, INSURED.
-        **Assuré** : seul le type `RIB` est autorisé.
+        **Assuré** : types autorisés `ID_CARD`, `REGISTRATION_CARD`, `INSURANCE_CERT`, `RIB`, `SIGNATURE` (pas rapport d’expertise / facture atelier).
         Corps `multipart/form-data` : champ fichier `file`, champ texte `type` (enum).
         Taille max configurable (`UPLOAD_MAX_BYTES`, défaut 15 Mo). Types MIME autorisés : PDF, PNG, JPEG, GIF, WebP, texte brut.
         Analyse du corps : **formidable** (fichier écrit sur disque puis enregistrement BDD).

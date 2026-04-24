@@ -5,10 +5,10 @@
   "license": "ISC",
   "author": "Mamadou Barry <mabarry2018@gmail.com>",
   "type": "commonjs",
-  "main": "app.js",
+  "main": "server.js",
   "scripts": {
-    "dev": "nodemon app.js",
-    "start": "node app.js",
+    "dev": "nodemon server.js",
+    "start": "node server.js",
     "docker:up": "docker compose up",
     "docker:up:build": "docker compose up --build",
     "docker:up:api": "docker compose up app-assurmoi-node app-assurmoi-mailhog app-assurmoi-db app-assurmoi-adminer",

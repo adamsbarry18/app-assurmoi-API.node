@@ -197,20 +197,32 @@ Accès rapides :
 
 ## Arborescence (aperçu)
 
+Structure modulaire : le code applicatif vit sous **`src/`** ; la racine garde la config outillage, l’entrée HTTP et les ressources statiques.
+
 ```
 app-assurmoi-API/
-├── app.js                 # Point d’entrée Express
-├── config/                # Sequelize, OpenAPI
-├── core/                  # logger, erreurs
-├── routes/                # Routeurs par domaine (+ swagger)
-├── middlewares/           # auth, validation, upload, etc.
-├── services/              # Logique métier (dont yousignClient.js)
-├── models/                # Modèles Sequelize
-├── migrations/
-├── seeders/
-├── utils/                 # mailer, chemins upload
+├── server.js              # Entrée HTTP (charge `src/app.js`)
+├── app.js                 # Exporte l’app Express (tests, sans écoute)
+├── src/
+│   ├── app.js             # Application Express (middlewares, routes)
+│   ├── config/            # Sequelize, OpenAPI, chemins (`paths.js`)
+│   ├── core/              # logger, erreurs
+│   ├── controllers/       # (à compléter) — couche HTTP fine entre routes et services
+│   ├── database/
+│   │   ├── migrations/
+│   │   └── seeders/
+│   ├── jobs/              # tâches planifiées / files d’attente (réservé)
+│   ├── middlewares/       # auth, validation, upload, etc.
+│   ├── models/            # Modèles Sequelize
+│   ├── routes/            # Routeurs par domaine (+ swagger)
+│   ├── services/          # Logique métier (dont yousignClient.js)
+│   ├── utils/             # mailer, chemins upload
+│   └── validators/        # règles de validation (express-validator, à factoriser)
+├── tests/                 # tests d’intégration / unitaires (réservé)
+├── templates/             # pages HTML (e-mails, reset, etc.)
 ├── docs/
 │   └── openapi.yml
+├── uploads/               # stockage local des pièces (ou `UPLOAD_DIR`)
 ├── docker-compose.yml
 ├── Dockerfile
 ├── package.json

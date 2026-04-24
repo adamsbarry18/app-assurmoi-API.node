@@ -2,6 +2,7 @@ const path = require('path')
 const express = require('express')
 const swaggerUi = require('swagger-ui-express')
 const { loadOpenApiSpec } = require('../config/openapi')
+const { docs: docsPath } = require('../config/paths')
 
 const router = express.Router()
 
@@ -14,7 +15,7 @@ const swaggerUiOptions = {
 }
 
 router.get('/openapi.yml', (req, res) => {
-  res.type('application/yaml').sendFile(path.resolve(__dirname, '..', 'docs', 'openapi.yml'))
+  res.type('application/yaml').sendFile(path.resolve(docsPath('openapi.yml')))
 })
 
 // Recharge openapi.yml à chaque requête : évite d’afficher une spec obsolète après édition sans redémarrage.

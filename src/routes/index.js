@@ -1,4 +1,5 @@
 const path = require('path')
+const { templates: templatesPath } = require('../config/paths')
 const userRoutes = require('./users')
 const authRoutes = require('./auth')
 const sinisterRoutes = require('./sinisters')
@@ -8,7 +9,7 @@ const historyRoutes = require('./history')
 const notificationRoutes = require('./notifications')
 const logger = require('../core/logger')
 
-const templatesDir = path.join(__dirname, '..', 'templates')
+const templatesDir = templatesPath()
 
 function initRoutes (app) {
   /** Pages HTML (liens e-mail : invitation collaborateurs, reset mot de passe) — voir /templates */

@@ -57,10 +57,19 @@ const uploadDocument = async (req, res) => {
       })
     }
 
-    if (req.user.role === 'INSURED' && type !== 'RIB') {
+    /** Pièces « assuré » (hors actes pro type rapport / facture). */
+    const INSURED_ALLOWED_TYPES = new Set([
+      'ID_CARD',
+      'REGISTRATION_CARD',
+      'INSURANCE_CERT',
+      'RIB',
+      'SIGNATURE'
+    ])
+    if (req.user.role === 'INSURED' && !INSURED_ALLOWED_TYPES.has(type)) {
       fs.unlink(file.path, () => {})
       return res.status(ERROR_CODES.FORBIDDEN.status).json({
-        message: 'L’assuré ne peut déposer que des RIB (type RIB)',
+        message:
+          'Type de document non autorisé pour un assuré (autorisé : CNI, carte grise, attestation, RIB, signature).',
         code: ERROR_CODES.FORBIDDEN.code
       })
     }

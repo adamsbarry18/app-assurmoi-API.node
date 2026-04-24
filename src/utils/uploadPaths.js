@@ -1,11 +1,12 @@
 const fs = require('fs')
 const path = require('path')
 const crypto = require('crypto')
+const { uploads: defaultUploadsDir } = require('../config/paths')
 
 function getUploadRoot () {
   return process.env.UPLOAD_DIR
     ? path.resolve(process.env.UPLOAD_DIR)
-    : path.join(__dirname, '..', 'uploads')
+    : defaultUploadsDir()
 }
 
 function ensureUploadRoot () {

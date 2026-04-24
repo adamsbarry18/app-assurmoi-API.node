@@ -314,6 +314,14 @@ const updateSinister = async (req, res) => {
       })
     }
 
+    if (req.user.role === 'INSURED' && Number(sinister.insured_user_id) !== Number(req.user.id)) {
+      await transaction.rollback()
+      return res.status(ERROR_CODES.NOT_FOUND.status).json({
+        message: 'Sinistre introuvable',
+        code: ERROR_CODES.NOT_FOUND.code
+      })
+    }
+
     await assertSinisterDocumentSlots(req.body, { transaction })
 
     const {
