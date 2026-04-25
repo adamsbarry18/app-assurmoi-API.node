@@ -85,13 +85,30 @@ const updateSinisterValidators = [
     .optional({ values: 'null' })
     .isInt()
     .isIn([0, 50, 100]),
-  body('cni_driver').optional({ values: 'null' }).isInt({ min: 1 }),
+  body('cni_driver')
+    .optional({ nullable: true })
+    .custom((v) => {
+      if (v === null || v === undefined) return true
+      const n = Number(v)
+      if (Number.isInteger(n) && n >= 1) return true
+      throw new Error('cni_driver doit être un entier ≥ 1 ou null')
+    }),
   body('vehicle_registration_doc_id')
-    .optional({ values: 'null' })
-    .isInt({ min: 1 }),
+    .optional({ nullable: true })
+    .custom((v) => {
+      if (v === null || v === undefined) return true
+      const n = Number(v)
+      if (Number.isInteger(n) && n >= 1) return true
+      throw new Error('vehicle_registration_doc_id doit être un entier ≥ 1 ou null')
+    }),
   body('insurance_certificate_id')
-    .optional({ values: 'null' })
-    .isInt({ min: 1 }),
+    .optional({ nullable: true })
+    .custom((v) => {
+      if (v === null || v === undefined) return true
+      const n = Number(v)
+      if (Number.isInteger(n) && n >= 1) return true
+      throw new Error('insurance_certificate_id doit être un entier ≥ 1 ou null')
+    }),
   body('insured_user_id')
     .optional({ values: 'null' })
     .isInt({ min: 1 }),
