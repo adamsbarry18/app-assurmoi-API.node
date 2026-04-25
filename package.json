@@ -9,20 +9,14 @@
   "scripts": {
     "dev": "nodemon server.js",
     "start": "node server.js",
-    "docker:up": "docker compose up",
-    "docker:up:build": "docker compose up --build",
-    "docker:up:api": "docker compose up app-assurmoi-node app-assurmoi-mailhog app-assurmoi-db app-assurmoi-adminer",
-    "docker:up:api:build": "docker compose up --build app-assurmoi-node app-assurmoi-mailhog app-assurmoi-db app-assurmoi-adminer",
+    "dcu": "docker compose up",
+    "dcub": "docker compose up --build",
     "db:migrate": "docker compose run app-assurmoi-node npx sequelize-cli db:migrate",
     "db:migrate:undo": "docker compose run app-assurmoi-node npx sequelize-cli db:migrate:undo",
     "db:seed": "docker compose run app-assurmoi-node npx sequelize-cli db:seed:all",
     "db:seed:undo": "docker compose run app-assurmoi-node npx sequelize-cli db:seed:undo",
     "db:seed:undo:all": "docker compose run app-assurmoi-node npx sequelize-cli db:seed:undo:all",
-    "db:migrate:local": "npx sequelize-cli db:migrate",
-    "db:migrate:undo:local": "npx sequelize-cli db:migrate:undo",
-    "db:seed:local": "npx sequelize-cli db:seed:all",
-    "db:seed:undo:local": "npx sequelize-cli db:seed:undo",
-    "db:seed:undo:all:local": "npx sequelize-cli db:seed:undo:all"
+    "db:generate:migration": "docker compose run app-assurmoi-node npx sequelize-cli migration:generate"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

@@ -3,6 +3,10 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up (queryInterface, Sequelize) {
+    const users = await queryInterface.describeTable('users')
+    if (users.password_pending) {
+      return
+    }
     const transaction = await queryInterface.sequelize.transaction()
     try {
       await queryInterface.addColumn(
@@ -23,6 +27,10 @@ module.exports = {
   },
 
   async down (queryInterface) {
+    const users = await queryInterface.describeTable('users')
+    if (!users.password_pending) {
+      return
+    }
     const transaction = await queryInterface.sequelize.transaction()
     try {
       await queryInterface.removeColumn('users', 'password_pending', { transaction })
