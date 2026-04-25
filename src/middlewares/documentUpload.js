@@ -11,6 +11,31 @@ const {
 const MAX_BYTES = Number.parseInt(process.env.UPLOAD_MAX_BYTES || '15728640', 10)
 
 /**
+ * Déplace le fichier temporaire vers le dossier d’upload.
+ * `rename` est atomique seulement sur le même disque ; en Docker, /tmp et le volume
+ * monté sont souvent sur des devices différents → EXDEV. On retombe sur copy + unlink.
+ */
+function moveTempFileTo (src, dest) {
+  try {
+    fs.renameSync(src, dest)
+  } catch (e) {
+    if (e && e.code === 'EXDEV') {
+      try {
+        fs.copyFileSync(src, dest)
+      } finally {
+        try {
+          fs.unlinkSync(src)
+        } catch (_) {
+          /* */
+        }
+      }
+      return
+    }
+    throw e
+  }
+}
+
+/**
  * Multipart (champs `type` + fichier `file`) via formidable — même contrat qu’avant (multer).
  * Remplit `req.body`, `req.file`, `req.diskRelativePath` pour le service.
  */
@@ -64,7 +89,7 @@ const uploadDocumentFile = (req, res, next) => {
 
     try {
       fs.mkdirSync(destDir, { recursive: true })
-      fs.renameSync(file.filepath, destPath)
+      moveTempFileTo(file.filepath, destPath)
     } catch (e) {
       try {
         if (file.filepath) fs.unlinkSync(file.filepath)

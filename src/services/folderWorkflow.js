@@ -57,14 +57,13 @@ function getEffectiveResponsibilityPct (sinister) {
 }
 
 /**
- * Vérifie document lié : existe, validé, et type conforme aux règles d’étape / scénario.
+ * Vérifie document lié : existe, type conforme aux règles d’étape / scénario.
+ * - `is_validated` est exigé pour les étapes expertise / facture (réparable).
+ * - RIB sur l’étape S2 (perte totale) : dépôt enregistrable avant validation interne
+ *   (assuré ou chargé de suivi).
+ * - Pièces optionnelles sur d’autres types d’étape : liables avant validation.
  */
-function assertStepDocumentRules (
-  folder,
-  { stepType, documentId },
-  documentInstance,
-  { allowUnvalidatedRibFromInsured = false } = {}
-) {
+function assertStepDocumentRules (folder, { stepType, documentId }, documentInstance) {
   const rule = findStructuredDocRule(stepType)
 
   if (rule) {
@@ -95,12 +94,16 @@ function assertStepDocumentRules (
     if (!documentInstance) {
       throw new AppError('Document introuvable', 400, ERROR_CODES.BAD_REQUEST.code)
     }
-    const skipValidationBecauseInsuredRib =
-      allowUnvalidatedRibFromInsured &&
+    const unvalidatedRibDepotOnS2Step =
       stepType === STEP_TYPE.S2_RIB &&
       documentInstance.type === 'RIB' &&
       !documentInstance.is_validated
-    if (!documentInstance.is_validated && !skipValidationBecauseInsuredRib) {
+    const structuredStepRequiresValidatedDocument = Boolean(rule)
+    if (
+      structuredStepRequiresValidatedDocument &&
+      !documentInstance.is_validated &&
+      !unvalidatedRibDepotOnS2Step
+    ) {
       throw new AppError(
         'Document non validé : validation gestionnaire requise avant de lier cette étape',
         422,

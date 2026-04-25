@@ -175,10 +175,7 @@ const createFolderStep = async (req, res) => {
       }
     }
 
-    assertStepDocumentRules(folder, { stepType, documentId }, documentInstance, {
-      allowUnvalidatedRibFromInsured:
-        req.user.role === 'INSURED' && stepType === STEP_TYPE.S2_RIB
-    })
+    assertStepDocumentRules(folder, { stepType, documentId }, documentInstance)
 
     const performedById = await resolvePerformedById(req, req.body.performed_by_id, {
       transaction
