@@ -9,8 +9,6 @@
   "scripts": {
     "dev": "nodemon server.js",
     "start": "node server.js",
-    "dcu": "docker compose up",
-    "dcub": "docker compose up --build",
     "db:migrate": "docker compose run app-assurmoi-node npx sequelize-cli db:migrate",
     "db:migrate:undo": "docker compose run app-assurmoi-node npx sequelize-cli db:migrate:undo",
     "db:seed": "docker compose run app-assurmoi-node npx sequelize-cli db:seed:all",

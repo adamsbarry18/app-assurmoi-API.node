@@ -181,7 +181,7 @@ Les commandes d’orchestration passent par **Docker** (`app-assurmoi-node` char
 **Contenu des seeders** (développement) :
 
 - `src/database/seeders/20260324130823-user.js` : un compte **ADMIN** existant (identifiants historiques du projet).
-- `src/database/seeders/20260430120000-dev-users-roles-sinistres.js` : comptes **`seed.*`** (un rôle chacun), **documents**, **sinistres**, **dossier**, **étape**, **historique**, **notifications**, **invitation** en attente. Mot de passe commun par défaut : `MotDeP@ss123` (surcharge : variable **`SEED_DEV_PASSWORD`** dans `.env` — voir `.env.example`). Le seeder est **idempotent** : s’il détecte déjà `seed.admin`, il ne réinsère pas (utiliser `db:seed:undo:all` puis `db:seed` pour repartir de zéro sur les données de démo).
+- `src/database/seeders/20260430120100–20107-*.js` (ordre d’exécution) : jeu de **démo** par modèle — **utilisateurs** `seed.*`, **documents** (tous les types), **sinistres**, **dossiers** (`sinister_folders`), **étapes** (`folder_steps`), **historique** (`history_logs`), **notifications**, **invitations** ; constantes partagées `src/database/seeders/lib/devSeedConstants.js`. Mot de passe par défaut : `MotDeP@ss123` (surcharge : **`SEED_DEV_PASSWORD`**, voir `.env.example`). **Idempotence** : le premier de la série s’appuie sur `seed.admin` ; chaque suite vérifie déjà l’enregistrement cible. `db:seed:undo:all` annule en sens inverse, puis `db:seed` pour repartir de zéro.
 
 Générer une nouvelle migration :
 
